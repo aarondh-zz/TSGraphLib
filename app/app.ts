@@ -17,7 +17,19 @@ interface EdgeData {
     lineWidth?: number;
     textStyle?: string
 }
-
+interface EdgeDataWithFromTo extends EdgeData {
+    from: number;
+    to: number;
+}
+interface GraphInput {
+    stiffness: number;
+    repulsion: number;
+    damping: number;
+    minEnergyThreshold;
+    maxSpeed: number;
+    vertices: VertexData[];
+    edges: EdgeDataWithFromTo[];
+}
 export class Main implements Renderer<VertexData,EdgeData> {
     timerToken: number;
     graph: Graph<VertexData, EdgeData>;
@@ -26,40 +38,41 @@ export class Main implements Renderer<VertexData,EdgeData> {
     drawingContext: CanvasRenderingContext2D;
     boundingBox: Rectangle;
     targetBoundingBox: Rectangle;
-    defaultVertexFont: string = "16px Verdana, sans-serif";
+    defaultVertexFont: string = "12px Verdana, sans-serif";
     defaultVertexBackgroundStyle: string = "#FFFFE0";
     defaultVertexTextStyle: string = "#000000";
+    defaultVertexTextHieght: number = 10;
     defaultEdgeFont: string = "8px Verdana, sans-serif";
     defaultEdgeLineStyle: string = "#000000";
     defaultEdgeLineWidth: number = 1;
     defaultEdgeTextStyle: string = "#000000";
     constructor(public divElement: HTMLDivElement, public canvasElement: HTMLCanvasElement) {
-        this.createGraph();
         this.drawingContext = canvasElement.getContext("2d");
-    }
-    createGraph(): void {
         var graph = this.graph = new Graph<VertexData, EdgeData>();
-        graph.addVertex({ label: "0" });
-        graph.addVertex({ label: "1" });
-        graph.addVertex({ label: "2" });
-        graph.addVertex({ label: "3" });
-        graph.addVertex({ label: "4" });
-        graph.addVertex({ label: "5555" });
-        graph.addVertex({ label: "middle"});
-        graph.addEdge(0, 1, "a");
-        graph.addEdge(0, 2, "b");
-        graph.addEdge(1, 2, "c");
-        graph.addEdge(6, 1, "c");
-        graph.addEdge(2, 0, "d");
-        graph.addEdge(2, 3, "e");
-        graph.addEdge(3, 2, "e");
-        graph.addEdge(3, 4, "f");
-        graph.addEdge(4, 5, "g");
-        graph.addEdge(5, 3, "g");
-        graph.addEdge(5, 6, "g");
+    }
+    loadGraph(graphSource: string) {
+        this.graph.clear();
 
-        this.layout = new ForceDirected<VertexData, EdgeData>(graph, 400.0,400.0,0.5,0.00001);
+        var graphInput: GraphInput = JSON.parse(graphSource);
+        if (Array.isArray(graphInput.vertices)) {
+            graphInput.vertices.forEach((vertextData) => {
+                this.graph.addVertex(vertextData);
+            });
+            graphInput.edges.forEach((edgeData) => {
+                this.graph.addEdge(edgeData.from, edgeData.to, edgeData);
+            });
+        }
+
+        this.layout = new ForceDirected<VertexData, EdgeData>(this.graph,
+            graphInput.stiffness || 400.0,
+            graphInput.repulsion || 400.0,
+            graphInput.damping || 0.5,
+            graphInput.minEnergyThreshold || 0.00001,
+            graphInput.maxSpeed || Infinity);
+
         this.animate = new Animate<VertexData, EdgeData>(this.layout, this);
+    }
+    start(): void {
 
         this.boundingBox = this.layout.getBoundingBox();
         this.targetBoundingBox = { bottomLeft: new Vector(-2, -2), topRight: new Vector(2, 2) };
@@ -110,7 +123,7 @@ export class Main implements Renderer<VertexData,EdgeData> {
         return width;
     }
     getTextHeight(text: string, font: string) {
-        return 16;
+        return this.defaultVertexTextHieght;
     }
     drawVertex(vertex: IVertex<VertexData>, position: Vector): void {
         let s = this.toScreen(position);
