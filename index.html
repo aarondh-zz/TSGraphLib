@@ -10,12 +10,13 @@
     <script src="https://unpkg.com/systemjs@0.19.39/dist/system.src.js"></script>
     <script src="/systemjs.config.js"></script>
     <script>
-        System.import('/app.js').catch(function (err) { console.error(err); });
+        System.import('app/boot').catch(function (err) { console.error(err); });
     </script>
 </head>
 <body>
     <h1>GraphLib test harness</h1>
 
-    <div id="content"></div>
+    <div id="content" style="width: 400px;height:400px;border:1px solid lightgray"></div>
+    <canvas id="canvas" style="margin-top: 20px; width: 400px;height:400px;border:1px solid lightgray"></canvas>
 </body>
 </html>
