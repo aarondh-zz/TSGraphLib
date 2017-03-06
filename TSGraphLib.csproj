@@ -31,9 +31,11 @@
     <TypeScriptCompile Include="app\animate.ts" />
     <TypeScriptCompile Include="app\boot.ts" />
     <TypeScriptCompile Include="app\app.ts" />
+    <TypeScriptCompile Include="app\canvasRenderer.ts" />
     <TypeScriptCompile Include="app\forceDirected.ts" />
     <TypeScriptCompile Include="app\graph.ts" />
     <TypeScriptCompile Include="app\math.ts" />
+    <TypeScriptCompile Include="app\detective.ts" />
   </ItemGroup>
   <ItemGroup>
     <None Include="web.Debug.config">

@@ -1,6 +1,6 @@
 ﻿
 import { IEdge, IVertex } from "./graph";
-import { Vector } from "./math";
+import { Vector, Rectangle } from "./math";
 export enum LayoutState {
     Stopped,
     Starting,
@@ -12,8 +12,11 @@ export interface Layout<V, E> {
     isReady(): boolean;
     forEachVertex(each: (vertex: IVertex<V>, p: Vector) => void): void
     forEachEdge(earch: (edge: IEdge<E>, p1: Vector, p2: Vector) => void): void
+    getBoundingBox(): Rectangle;
 }
 export interface Renderer<V, E> {
+    start(): void;
+    end(): void;
     frameStart(): void
     drawEdge(edge: IEdge<E>, p1: Vector, p2: Vector): void;
     drawVertex(vertex: IVertex<V>, p: Vector): void;
@@ -86,6 +89,12 @@ export class Animate<V, E> {
         }
 
         window.requestAnimationFrame(this.step.bind(this, onRenderStop, onRenderStart));
+    }
+
+    public stop(): void {
+        if (this._state === LayoutState.Started) {
+            this._state = LayoutState.Stopping;
+        }
     }
 
 }

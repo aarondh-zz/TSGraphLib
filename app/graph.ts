@@ -11,6 +11,24 @@ export interface IEdge<E> {
 export interface GraphListener {
     graphChanged() : void
 }
+export interface VertexComparer<T> {
+    (a: IVertex<T>, b: IVertex<T>): number;
+}
+export interface VertexEquality<T> {
+    (a: IVertex<T>, b: IVertex<T>): boolean;
+}
+export interface VertexFilter<T> {
+    (vertex: IVertex<T>): boolean;
+}
+export interface EdgeComparer<E> {
+    (a: IEdge<E>, b: IEdge<E>): number;
+}
+export interface EdgeEquality<E> {
+    (a: IEdge<E>, b: IEdge<E>): boolean;
+}
+export interface EdgeFilter<E> {
+    (edge: IEdge<E>): boolean;
+}
 class Edge<E> implements IEdge<E>
 {
     private static _nextId = 1;
@@ -35,20 +53,52 @@ class Vertex<V,E> implements IVertex<V>
     }
     constructor(private _id: number, public payload: V) {
     }
-    public addEdge(toId: number, payload: E): Edge<E> {
+    public addEdge(toId: number, payload: E, allowDuplicates: boolean = true): Edge<E> {
         if (this.adjacent == null) {
             this.adjacent = [];
+        }
+        if (!allowDuplicates) {
+            for (let i = 0; i < this.adjacent.length; i++) {
+                let existingEdge = this.adjacent[i];
+                if (existingEdge.toId === toId) {
+                    return existingEdge;
+                }
+            }
         }
         var edge = new Edge(this.id, toId, payload);
         this.adjacent.push(edge);
         return edge;
     }
 }
+export interface IGraph<V, E> {
+    vertices: IVertex<V>[];
+    edges: IEdge<E>[];
+}
 export class Graph<V, E> {
     private _vertices: Vertex<V, E>[];
     private _listeners: GraphListener[] = [];
     constructor() {
         this.clear();
+    }
+    public get vertexCount(): number {
+        return this._vertices.length;
+    }
+    public get vertices(): IVertex<V>[] {
+        return this._vertices;
+    }
+    public get edges(): IEdge<E>[] {
+        let edges: IEdge<E>[] = [];
+        this.forEachEdge((edge) => {
+            edges.push(edge);
+        })
+        return edges;
+    }
+    public get edgeCount(): number {
+        let count: number = 0;
+        this.forEachEdge((edge) => {
+            count++;
+        });
+        return count;
     }
     protected notify(): void {
         this._listeners.forEach((listener) => {
@@ -63,9 +113,6 @@ export class Graph<V, E> {
     public clear(): void {
         this._vertices = [];
         this.notify();
-    }
-    public get vertices(): number {
-        return this._vertices.length;
     }
     public addVertex(payload: V): IVertex<V> {
         var vertex = new Vertex<V, E>(this._vertices.length, payload);
@@ -83,20 +130,67 @@ export class Graph<V, E> {
         var edges: IEdge<E>[] = [];
         var vertex = this.getVertex(fromId);
         vertex.adjacent.forEach((edge) => {
-            edges.push(edge);
+            if (edge.toId === toId) {
+                edges.push(edge);
+            }
         });
         return edges;
     }
-    public addEdge(fromId: number, toId: number, payload?: E) : IEdge<E> {
+    public addEdge(fromId: number, toId: number, payload?: E, allowDuplicates: boolean = true) : IEdge<E> {
         var fromVertex = this.getVertex(fromId);
 
         var toVertex = this.getVertex(toId);
 
-        var edge = fromVertex.addEdge(toId, payload);
+        var edge = fromVertex.addEdge(toId, payload, allowDuplicates);
 
         this.notify();
 
         return edge;
+    }
+    public merge(graph: { vertices: IVertex<V>[], edges: IEdge<E>[] }, equality: VertexEquality<V> ) {
+
+        var vertices = {};
+
+        graph.vertices.forEach(function (vertex) {
+            let matches = this.filterVertices(equality);
+            if (matches.length > 0) {
+                vertices[vertex.id] = matches[0];
+            }
+            else {
+                vertices[vertex.id] = this.addVertex(vertex.payload);
+            }
+
+        }, this);
+
+        graph.edges.forEach(function (edge) {
+
+            var from = vertices[edge.fromId];
+
+            var to = vertices[edge.toId];
+
+            var newEdge = this.addEdge(from.id, to.id, edge.payload, false);
+
+        }, this);
+
+    };
+
+    public filterVertices(filter: VertexFilter<V>): IVertex<V>[] {
+        var matching: IVertex<V>[] = [];
+        this.forEachVertex((vertex) => {
+            if (filter(vertex)) {
+                matching.push(vertex);
+            }
+        });
+        return matching;
+    }
+    public filterEdges(filter: EdgeFilter<E>): IEdge<E>[] {
+        var matching: IEdge<E>[] = [];
+        this.forEachEdge((edge) => {
+            if (filter(edge)) {
+                matching.push(edge);
+            }
+        });
+        return matching;
     }
     public forEachVertex(each: (vertex: IVertex<V>) => any) {
         for (var i = 0; i < this._vertices.length; i++) {
