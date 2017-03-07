@@ -46,7 +46,13 @@ export class ForceDirected<V, E> implements Layout<V, E> {
         let spring = this._springs[edge.id];
 
         if (!spring) {
-            var length = (edge.payload["length"] !== undefined) ? edge.payload["length"] : 1.0;
+            var length: number;
+            if (edge.payload && typeof edge.payload["length"] === "number") {
+                length = edge.payload["length"];
+            }
+            else {
+                length = 1.0;
+            }
             spring = this._springs[edge.id] = new Spring(
                 this.getBody(this.graph.getVertex(edge.fromId)),
                 this.getBody(this.graph.getVertex(edge.toId)),
@@ -62,7 +68,13 @@ export class ForceDirected<V, E> implements Layout<V, E> {
     public getBody(vertex: IVertex<V>): Body {
         var body = this._points[vertex.id];
         if (!body) {
-            var mass = (vertex.payload["mass"] !== undefined) ? vertex.payload["mass"] : 1.0;
+            var mass: number;
+            if (vertex.payload && typeof vertex.payload["mass"] === "number") {
+                mass = vertex.payload["mass"];
+            }
+            else {
+                mass = 1.0;
+            }
             body = this._points[vertex.id] = new Body(Vector.random(), mass);
         }
 

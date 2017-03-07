@@ -1,20 +1,49 @@
 ﻿import { IVertex, IEdge } from "./graph";
 import { Vector, Rectangle } from "./math";
 import { Renderer, Layout } from "./animate";
+function objectAssign<T>(target: T, ...sources: T[]): any {
+    if (sources) {
+        sources.forEach((source) => {
+            for (let key in source) {
+                target[key] = source[key];
+            }
+        });
+    }
+    return target;
+}
+export interface VertexStyle {
+    font?: string;
+    backgroundStyle?: string;
+    textStyle?: string;
+    textHieght?: number;
 
+}
+export interface EdgeStyle {
+    font?: string;
+    lineStyle?: string;
+    lineWidth?: number;
+    textStyle?: string;
+}
+var defaultVertexStyle: VertexStyle = {
+    font: "12px Verdana, sans-serif",
+    backgroundStyle: "#FFFFE0",
+    textStyle: "#000000",
+    textHieght: 10
+
+};
+var defaultEdgeStyle: EdgeStyle = {
+    font: "8px Verdana, sans-serif",
+    lineStyle: "#000000",
+    lineWidth: 1,
+    textStyle: "#000000"
+};
 export class CanvasRenderer<V, E> implements Renderer<V, E> {
     timerToken: number;
     drawingContext: CanvasRenderingContext2D;
     boundingBox: Rectangle;
     targetBoundingBox: Rectangle;
-    defaultVertexFont: string = "12px Verdana, sans-serif";
-    defaultVertexBackgroundStyle: string = "#FFFFE0";
-    defaultVertexTextStyle: string = "#000000";
-    defaultVertexTextHieght: number = 10;
-    defaultEdgeFont: string = "8px Verdana, sans-serif";
-    defaultEdgeLineStyle: string = "#000000";
-    defaultEdgeLineWidth: number = 1;
-    defaultEdgeTextStyle: string = "#000000";
+    public defaultVertexStyle: VertexStyle = defaultVertexStyle;
+    public defaultEdgeStyle: EdgeStyle = defaultEdgeStyle;
     private _stopping: boolean = false;
     constructor(public layout: Layout<V, E>, public canvasElement: HTMLCanvasElement) {
         this.drawingContext = canvasElement.getContext("2d");
@@ -72,31 +101,16 @@ export class CanvasRenderer<V, E> implements Renderer<V, E> {
         return width;
     }
     getTextHeight(text: string, font: string) {
-        return this.defaultVertexTextHieght;
+        return this.defaultVertexStyle.textHieght;
     }
     getVertexLabel(vertex: IVertex<V>): string {
         return vertex.id.toString();
     }
-    getVertexFont(vertex: IVertex<V>): string {
-        return this.defaultVertexFont;
+    getVertexStyle(vertex: IVertex<V>): VertexStyle {
+        return this.defaultVertexStyle;
     }
-    getVertexTextStyle(vertex: IVertex<V>): string {
-        return this.defaultVertexTextStyle;
-    }
-    getVertexBackgroundStyle(vertex: IVertex<V>): string {
-        return this.defaultVertexBackgroundStyle;
-    }
-    getEdgeFont(edge: IEdge<E>): string {
-        return this.defaultEdgeFont;
-    }
-    getEdgeTextStyle(edge: IEdge<E>): string {
-        return this.defaultEdgeTextStyle;
-    }
-    getEdgeLineStyle(edge: IEdge<E>): string {
-        return this.defaultEdgeLineStyle;
-    }
-    getEdgeLineWidth(edge: IEdge<E>): number {
-        return this.defaultEdgeLineWidth;
+    getEdgeStyle(edge: IEdge<E>): EdgeStyle {
+        return this.defaultEdgeStyle;
     }
     drawVertex(vertex: IVertex<V>, position: Vector): void {
         let s = this.toScreen(position);
@@ -109,18 +123,16 @@ export class CanvasRenderer<V, E> implements Renderer<V, E> {
         // These should probably be settable by the user (and scoped higher) but this suffices for now
         var paddingX = 6;
         var paddingY = 6;
-        var font = this.getVertexFont(vertex) || this.defaultVertexFont;
-        var textStyle = this.getVertexTextStyle(vertex) || this.defaultVertexTextStyle;
-        var backgroundStyle = this.getVertexBackgroundStyle(vertex) || this.defaultVertexBackgroundStyle;
+        var vertexStyle = objectAssign<VertexStyle>({}, this.defaultVertexStyle, this.getVertexStyle(vertex));
         var contentWidth: number;
         var vertexLabel = this.getVertexLabel(vertex) || vertex.id.toString();
         if (vertex["_textWidth"]) {
             contentWidth = vertex["_textWidth"];
         }
         else {
-            contentWidth = vertex["_textWidth"] = this.getTextWidth(vertexLabel, font);
+            contentWidth = vertex["_textWidth"] = this.getTextWidth(vertexLabel, vertexStyle.font);
         }
-        var contentHeight = this.getTextHeight(vertexLabel, font);
+        var contentHeight = this.getTextHeight(vertexLabel, vertexStyle.font);
         var boxWidth = contentWidth + paddingX;
         var boxHeight = contentHeight + paddingY;
 
@@ -128,13 +140,13 @@ export class CanvasRenderer<V, E> implements Renderer<V, E> {
         dc.clearRect(s.x - boxWidth / 2, s.y - boxHeight / 2, boxWidth, boxHeight);
 
         // fill background
-        dc.fillStyle = backgroundStyle;
+        dc.fillStyle = vertexStyle.backgroundStyle;
         dc.fillRect(s.x - boxWidth / 2, s.y - boxHeight / 2, boxWidth, boxHeight);
 
         dc.textAlign = "left";
         dc.textBaseline = "top";
-        dc.font = this.defaultVertexFont;
-        dc.fillStyle = textStyle;
+        dc.font = vertexStyle.font;
+        dc.fillStyle = vertexStyle.textStyle;
         dc.fillText(vertexLabel, s.x - contentWidth / 2, s.y - contentHeight / 2);
         dc.restore();
     }
@@ -142,13 +154,10 @@ export class CanvasRenderer<V, E> implements Renderer<V, E> {
         let p1 = this.toScreen(position1);
         let p2 = this.toScreen(position2);
 
-        let font = this.getEdgeFont(edge) || this.defaultVertexFont;
-        let textStyle = this.getEdgeTextStyle(edge) || this.defaultEdgeTextStyle;
-        let lineStyle = this.getEdgeLineStyle(edge) || this.defaultEdgeLineStyle;
-        let lineWidth = this.getEdgeLineWidth(edge) || this.defaultEdgeLineWidth;
+        var edgeStyle = objectAssign<EdgeStyle>({}, this.defaultEdgeStyle, this.getEdgeStyle(edge));
         let dc = this.drawingContext;
-        dc.lineWidth = lineWidth;
-        dc.strokeStyle = lineStyle;
+        dc.lineWidth = edgeStyle.lineWidth;
+        dc.strokeStyle = edgeStyle.lineStyle;
         dc.beginPath();
         dc.moveTo(p1.x, p1.y);
         dc.lineTo(p2.x, p2.y);

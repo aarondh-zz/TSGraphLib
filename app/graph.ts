@@ -6,7 +6,7 @@ export interface IEdge<E> {
     id: number;
     fromId: number;
     toId: number;
-    payload: E;
+    payload?: E;
 }
 export interface GraphListener {
     graphChanged() : void
@@ -14,17 +14,14 @@ export interface GraphListener {
 export interface VertexComparer<T> {
     (a: IVertex<T>, b: IVertex<T>): number;
 }
-export interface VertexEquality<T> {
-    (a: IVertex<T>, b: IVertex<T>): boolean;
-}
 export interface VertexFilter<T> {
     (vertex: IVertex<T>): boolean;
 }
+export interface VertexKeyGenerator<T> {
+    (vertex: IVertex<T>): string;
+}
 export interface EdgeComparer<E> {
     (a: IEdge<E>, b: IEdge<E>): number;
-}
-export interface EdgeEquality<E> {
-    (a: IEdge<E>, b: IEdge<E>): boolean;
 }
 export interface EdgeFilter<E> {
     (edge: IEdge<E>): boolean;
@@ -42,7 +39,7 @@ class Edge<E> implements IEdge<E>
     public get toId(): number {
         return this._toId;
     }
-    constructor(private _fromId: number, private _toId: number, public payload: E) {
+    constructor(private _fromId: number, private _toId: number, public payload?: E) {
     }
 }
 class Vertex<V,E> implements IVertex<V>
@@ -143,23 +140,205 @@ export class Graph<V, E> {
 
         var edge = fromVertex.addEdge(toId, payload, allowDuplicates);
 
+        this.unremoveEdge(edge); //make sure it is not flagged as removed
+
         this.notify();
 
         return edge;
     }
-    public merge(graph: { vertices: IVertex<V>[], edges: IEdge<E>[] }, equality: VertexEquality<V> ) {
+    public removeEdge(edge: IEdge<E>) {
+        edge["$removed"] = true;
+    }
+    public isRemovedEdge(edge: IEdge<E>) {
+        return edge["$removed"] === true;
+    }
+    public unremoveEdge(edge: IEdge<E>) {
+        if (edge["$removed"]) {
+            delete edge["$removed"];
+        };
+    }
+    public unremoveAllEdges() {
+        this.forEachEdge((edge) => {
+            this.unremoveEdge(edge);
+        }, true);
+    }
+    public roots(): IVertex<V>[] {
+        let roots: IVertex<V>[] = [];
+        let candidates: { [id: string]: IVertex<V> } = {};
+        this._vertices.forEach((vertex) => {
+            candidates[vertex.id] = vertex;
+        });
+        this.forEachEdge((edge) => {
+            delete candidates[edge.toId];
+        });
+        for (let key in candidates) {
+            roots.push(candidates[key])
+        }
+        return roots;
+    }
+    public leafs(): IVertex<V>[] {
+        let leafs: IVertex<V>[] = [];
+        this._vertices.forEach((vertex) => {
+            if (!vertex.adjacent || vertex.adjacent.length == 0) {
+                leafs.push(vertex);
+            }
+        });
+        return leafs;
+    }
+    public getEdgeLength(edge: IEdge<E>) {
+        if (edge && edge.payload && typeof edge.payload["length"] === "number") {
+            return edge.payload["length"];
+        }
+        return 1.0;
+    }
+    // A recursive function used by longestPath. See below link for details
+    // http://www.geeksforgeeks.org/topological-sorting/
+    public topologicalSortUtil(vertexId: number, stack: number[], visited: boolean[])
+    {
+        visited[vertexId] = true;
+ 
+        let vertex = this.getVertex(vertexId);
+        if (vertex.adjacent) {
+            vertex.adjacent.forEach((edge) => {
+                if (!visited[edge.toId]) {
+                    let adjacentVertex = this.getVertex(edge.toId);
+                    this.topologicalSortUtil(edge.toId, stack, visited)
+                }
 
-        var vertices = {};
+            });
+        }
+
+        stack.push(vertexId);
+    }
+    // The function to find longest distances from a given vertex. It uses
+    // recursive topologicalSortUtil() to get topological sorting.
+    public longestPath(startId: number, each: (vertex: IVertex<V>, distance: number) => void) {
+        let stack: number[] = [];
+        let distance: number[] = [];
+
+        let visited: boolean[] = []
+
+        // Call the recursive helper function to store Topological Sort
+        // starting from all vertices's one by one
+        for (let id = 0; id < this._vertices.length; id++) {
+            if (!visited[id]) {
+                this.topologicalSortUtil(id, stack, visited);
+            }
+        }
+
+        // Initialize distances to all vertices as infinite and distance
+        // to source as 0
+        for (let id = 0; id < this._vertices.length; id++) {
+            distance[id] = Infinity;
+        }
+        distance[startId] = 0;
+
+        // Process vertices in topological order
+        while (stack.length > 0) {
+            // Get the next vertex from topological order
+            let next = stack.pop();
+
+            // Update distances of all adjacent vertices's
+            if (distance[next] !== Infinity) {
+                let vertex = this.getVertex(next);
+                let adjacent = vertex.adjacent;
+                if (adjacent) {
+                    for (let i = 0; i < adjacent.length; i++) {
+                        let edge = adjacent[i];
+                        let length = this.getEdgeLength(edge);
+                        if (distance[edge.toId] < distance[next] + length) {
+                            distance[edge.toId] = distance[next] + length;
+                        }
+                    }
+                }
+            }
+        }
+        for (let id = 0; id < this._vertices.length; id++) {
+            each(this.getVertex(id), distance[id]);
+        }
+    }
+    public getEdgeCount(vertexId:number) {
+        let edges = 0;
+        let vertex = this.getVertex(vertexId);
+        let adjacent = vertex.adjacent;
+        if (adjacent) {
+            for (let i = 0; i < adjacent.length; i++) {
+                let edge = adjacent[i];
+                if (!this.isRemovedEdge(edge)) {
+                    edges++;
+                }
+            }
+        }
+        return edges;
+    }
+    private pathBetweenUtil(edge:IEdge<E>, endId: number, distance: number, longest: boolean, path: IEdge<E>[]): number {
+        path.push(edge);
+        if (edge.toId == endId) {
+            return distance;
+        }
+        let vertex = this.getVertex(edge.toId);
+        let adjacent = vertex.adjacent;
+        if (adjacent) {
+            let selectedDistance = longest? -Infinity: Infinity;
+            let selectedPath: IEdge<E>[];
+            for (let i = 0; i < adjacent.length; i++) {
+                let edge = adjacent[i];
+                if (!this.isRemovedEdge(edge)) {
+                    let length = this.getEdgeLength(edge);
+                    this.removeEdge(edge);
+                    let nextPath:IEdge<E>[] = [];
+                    let result = this.pathBetweenUtil(edge, endId, distance + length, longest, nextPath);
+                    if (result !== Infinity) {
+                        if (longest && selectedDistance < result) {
+                            selectedPath = nextPath;
+                            selectedDistance = result;
+                        }
+                        else if (!longest && selectedDistance > result) {
+                            selectedPath = nextPath;
+                            selectedDistance = result;
+                        }
+                    }
+                }
+            }
+            if (selectedPath) {
+                for (let i = 0; i < selectedPath.length; i++) {
+                    path.push(selectedPath[i]);
+                }
+                return distance + selectedDistance;
+            }
+        }
+        return Infinity;
+    }
+    public pathBetween(startId: number, endId: number, longest:boolean, each: (vertex: IEdge<E>) =>void = null ): number {
+        var path: IEdge<E>[] = [];
+        let distance = this.pathBetweenUtil(new Edge<E>(-1,startId), endId, 0, longest, path);
+        if (each) {
+            path.forEach(each);
+        }
+        this.unremoveAllEdges();
+        return distance;
+    }
+    public merge(graph: { vertices: IVertex < V > [], edges: IEdge < E > [] }, keyGenerator: VertexKeyGenerator<V>) {
+
+        var vertices = [];  //map incoming to new vertices
+
+        var existingVertices: { [key: string]: IVertex<V> } = {}; //existing vertices by key
+
+        this._vertices.forEach(function (vertex) {
+            existingVertices[keyGenerator(vertex)] = vertex;
+        });
 
         graph.vertices.forEach(function (vertex) {
-            let matches = this.filterVertices(equality);
-            if (matches.length > 0) {
-                vertices[vertex.id] = matches[0];
+            let key = keyGenerator(vertex);
+            let existingVertex = existingVertices[key];
+            if (existingVertex ) {
+                vertices[vertex.id] = existingVertex;
             }
             else {
-                vertices[vertex.id] = this.addVertex(vertex.payload);
+                let newVertex = this.addVertex(vertex.payload);
+                existingVertices[key] = vertices[vertex.id] = newVertex;
             }
-
+            
         }, this);
 
         graph.edges.forEach(function (edge) {
@@ -202,10 +381,11 @@ export class Graph<V, E> {
             }
         }
     }
-    public forEachEdge(each: (edge: IEdge<E>) => any) {
+    public forEachEdge(each: (edge: IEdge<E>) => any, all: boolean = false) {
         this.forEachVertex((vertex: Vertex<V,E>) =>{
             if (vertex.adjacent) {
                 vertex.adjacent.forEach(edge => {
+                    if ( all || !this.isRemovedEdge(edge))
                     var result = each(edge);
                     if (typeof result === 'boolean') {
                         if (!result) {
@@ -216,7 +396,7 @@ export class Graph<V, E> {
             }
         });
     }
-    public forEachVertexBreadthFirst(startId: number, each: (vertex: IVertex<V>) => void): void {
+    public forEachVertexBreadthFirst(startId: number, each: (vertex: IVertex<V>) => void, all: boolean = false): void {
         var vertex = this.getVertex(startId); //validate
 
         var visited: boolean[] = [];
@@ -242,15 +422,17 @@ export class Graph<V, E> {
             var adjacent = vertex.adjacent;
             if (adjacent) {
                 adjacent.forEach((edge) => {
-                    if (!visited[edge.toId]) {
-                        visited[edge.toId] = true;
-                        vertices.push(edge.toId);
+                    if (all || !this.isRemovedEdge(edge)) {
+                        if (!visited[edge.toId]) {
+                            visited[edge.toId] = true;
+                            vertices.push(edge.toId);
+                        }
                     }
                 });
             }
         }
     }
-    private _forEachVertexDF(id: number, each: (vertex: IVertex<V>) => any, visited: boolean[]): boolean {
+    private _forEachVertexDF(id: number, each: (vertex: IVertex<V>) => any, all:boolean, visited: boolean[]): boolean {
         var vertex = this.getVertex(id);
         visited[id] = true;
         var result = each(vertex);
@@ -261,18 +443,103 @@ export class Graph<V, E> {
         }
         var adjacent = vertex.adjacent;
         if (adjacent) {
-            adjacent.forEach((edge) => {
-                if (!visited[edge.toId]) {
-                    if (!this._forEachVertexDF(edge.toId, each, visited)) {
-                        return false;
+            for (let i = 0; i < adjacent.length; i++) {
+                let edge = adjacent[i];
+                if (all || !this.isRemovedEdge(edge)) {
+                    if (!visited[edge.toId]) {
+                        if (!this._forEachVertexDF(edge.toId, each, all, visited)) {
+                            return false;
+                        }
                     }
                 }
-            });
+            }
         }
         return true;
     }
-    public forEachVertexDepthFirst(startId: number, each: (vertex: IVertex<V>) => any): void {
-        this._forEachVertexDF(startId, each, []);
+    public forEachVertexDepthFirst(startId: number, each: (vertex: IVertex<V>) => any, all: boolean = false): void {
+        this._forEachVertexDF(startId, each, all, []);
     }
+    public dfsCount(vertexId: number): number {
+        var count = 0;
+        this.forEachVertexDepthFirst(vertexId, (vertex) => {
+            count++;
+        })
+        return count;
+    }
+    public eulerTour(startId: number, each: (vertex: IVertex<V>) => any, ) {
+        if (startId < 0) {
+            // Find a vertex with odd degree
+            var oddDegreeVertexId = -1;
+            for (let id = 0; id < this._vertices.length; id++) {
+                let vertex = this._vertices[id];
+                if (vertex.adjacent && vertex.adjacent.length & 1) {
+                    oddDegreeVertexId = id;
+                    break;
+                }
+            }
+            startId = oddDegreeVertexId;
+        }
 
+        this.eulerTourUtil(startId, each);
+
+        this.unremoveAllEdges();
+    }
+    private eulerTourUtil(startId: number, each: (vertex: IVertex<V>) => any): boolean {
+        var vertex = this.getVertex(startId);
+        let result = each(vertex);
+        if (typeof result === 'boolean') {
+            if (!result) {
+                return false;
+            }
+        }
+        var adjacent = vertex.adjacent;
+        if (adjacent) {
+            for (let i = 0; i < adjacent.length; i++) {
+                let edge = adjacent[i];
+                if (!this.isRemovedEdge(edge) && this.isValidNextEulerTourEdge(edge)) {
+                    let to = this.getVertex(edge.toId);
+                    this.removeEdge(edge);
+                    if (!this.eulerTourUtil(to.id, each)) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
+    }
+    // The edge is valid in one of the following two cases:
+    // case 1: If edge is the only adjacent vertex 
+    // case 2: If there are multiple adjacent vertices's, and edge is not a bridge
+    private isValidNextEulerTourEdge(edge: IEdge<E>): boolean {
+        let isThisOnlyOne = true;
+        let adjacent = this.getVertex(edge.fromId).adjacent;
+        if (adjacent) {
+            for (let i = 0; i < adjacent.length; i++) {
+                let edgeOther = adjacent[i];
+                if (edge !== edgeOther && !this.isRemovedEdge(edgeOther)) {
+                    isThisOnlyOne = false;
+                    break;
+                }
+            }
+        }
+        if (isThisOnlyOne) {
+            return true;
+        }
+
+
+        return !this.isABridge(edge);
+    }
+    
+    private isABridge(edge: IEdge<E>): boolean {
+
+        let reachableCount1 = this.dfsCount(edge.fromId);
+
+        this.removeEdge(edge);
+
+        let reachableCount2 = this.dfsCount(edge.fromId);
+
+        this.unremoveEdge(edge);
+
+        return (reachableCount1 > reachableCount2);
+    }
 }

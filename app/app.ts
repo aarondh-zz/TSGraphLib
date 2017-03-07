@@ -47,9 +47,33 @@ export class Main {
     layout: ForceDirected<VertexData, EdgeData>;
     renderer: MyCanvasRenderer;
     animate: Animate<VertexData, EdgeData>;
-    constructor(public divElement: HTMLDivElement, public canvasElement: HTMLCanvasElement) {
+    textDiv: HTMLDivElement;
+    canvasElement: HTMLCanvasElement;
+    constructor(public contentElement: HTMLDivElement) {
         var graph = this.graph = new Graph<VertexData, EdgeData>();
     }
+    newTest(title:string) {
+        let testContainerDiv = document.createElement('div');
+        testContainerDiv.setAttribute("class","test-container")
+        this.contentElement.appendChild(testContainerDiv);
+
+        let titleDiv = document.createElement('div');
+        titleDiv.innerHTML = title;
+        titleDiv.setAttribute("class", "title");
+        testContainerDiv.appendChild(titleDiv);
+
+        let textContainerDiv = document.createElement('div');
+        textContainerDiv.setAttribute("class", "text-container")
+        testContainerDiv.appendChild(textContainerDiv);
+        this.textDiv = document.createElement('div');
+        textContainerDiv.appendChild(this.textDiv);
+
+        let cavnasContainerDiv = document.createElement('div');
+        cavnasContainerDiv.setAttribute("class", "canvas-container");
+        testContainerDiv.appendChild(cavnasContainerDiv);
+        this.canvasElement = document.createElement('canvas');
+        cavnasContainerDiv.appendChild(this.canvasElement);
+  }
     loadGraph(graphSource: string) {
         this.graph.clear();
 
@@ -70,7 +94,9 @@ export class Main {
             graphInput.minEnergyThreshold || 0.00001,
             graphInput.maxSpeed || Infinity);
         this.renderer = new MyCanvasRenderer(this.layout, this.canvasElement)
-        this.animate = new Animate<VertexData, EdgeData>(this.layout,this.renderer);
+        this.animate = new Animate<VertexData, EdgeData>(this.layout, this.renderer);
+
+        this.start();
     }
     start(): void {
 
@@ -80,23 +106,43 @@ export class Main {
     }
 
     testDF(): void {
+        this.newTest("depth first test");
         this.writeLine();
         this.write("depth first: ");
-        this.graph.forEachVertexDepthFirst(2, (vertex) => {
-            this.write(vertex.payload.label + " ");
-        });
+        try {
+            this.graph.forEachVertexDepthFirst(2, (vertex) => {
+                this.write(vertex.payload.label + " ");
+            });
+        }
+        catch (err) {
+            this.writeLine();
+            this.write(err);
+        }
     }
     testBF(): void {
+        this.newTest("breadth first test");
         this.writeLine();
         this.write("breadth first: ");
-        this.graph.forEachVertexBreadthFirst(2, (vertex) => {
-            this.write(vertex.payload.label + " ");
-        });
-    }
-    testDetective(statements: string[][]): void {
+        try {
+            this.graph.forEachVertexBreadthFirst(2, (vertex) => {
+                this.write(vertex.payload.label + " ");
+            });
+        }
+        catch (err) {
+            this.writeLine();
+            this.write(err);
+        }
+   }
+    testDetective(title: string, statements: string[][]): void {
+        this.newTest(title);
+        this.writeLine();
+        this.writeLine("statements: ");
+        this.writeLine(JSON.stringify(statements, null, 2));
         var detective = new Detective();
-
-        var layout = new ForceDirected<VertexData, EdgeData>(this.graph,
+        statements.forEach((statement) => {
+            detective.addStatement(statement);
+        });
+        var layout = new ForceDirected<VertexData, EdgeData>(detective.timeline,
             400.0,
             400.0,
             0.5,
@@ -106,11 +152,14 @@ export class Main {
         var animate = new Animate<VertexData, EdgeData>(layout, renderer);
         renderer.start();
         animate.start();
+        this.writeLine();
+        this.writeLine("timelines: ");
+        this.writeLine(JSON.stringify(detective.getTimelines(),null,2));
     }
     write(text: string) {
         var span = document.createElement('span');
         span.innerHTML = text;
-        this.divElement.appendChild(span);
+        this.textDiv.appendChild(span);
     }
     writeLine(text: string= "") {
         this.write(text + "<br/>")

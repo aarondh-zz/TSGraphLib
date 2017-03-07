@@ -41,11 +41,43 @@
     <script>
         System.import('app/boot').catch(function (err) { console.error(err); });
     </script>
+    <style type="text/css">
+        .test-container {
+            width: 100%;
+            border-bottom: 2px double black;
+        }
+        .test-container {
+            display:table;
+        }
+        .title {
+            display:table-row;
+            font-size:16px;
+            font-weight:bold;
+        }
+        .text-container {
+             display:table-cell;
+             vertical-align:top;
+            padding: 10px;
+            width: 50%;
+            border:1px solid lightgray;
+            }
+        .canvas-container {
+            display:table-cell;
+            width: 50%;
+            margin-left: 20px; 
+            padding: 10px;
+            background-color: lightgray;
+            border:1px solid lightgray;
+        }
+        canvas.canvas-container {
+            width: 500px;
+            height:500px;
+            background-color:#fff;
+        }
+    </style>
 </head>
 <body>
     <h1>TSGraphLib test harness</h1>
-
-    <div id="content" style="width: 500px;height:500px;border:1px solid lightgray;float:left"></div>
-    <canvas id="canvas" style="margin-left: 20px; width: 500px;height:500px;border:1px solid lightgray;float:left;"></canvas>
+    <div id="content"></div>
 </body>
 </html>
