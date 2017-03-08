@@ -309,9 +309,9 @@ export class Graph<V, E> {
         }
         return Infinity;
     }
-    public pathBetween(startId: number, endId: number, longest:boolean, each: (vertex: IEdge<E>) =>void = null ): number {
+    public pathBetween(startId: number, endId: number, longest: boolean, edgeType: new () => E, each: (vertex: IEdge<E>) =>void = null ): number {
         var path: IEdge<E>[] = [];
-        let distance = this.pathBetweenUtil(new Edge<E>(-1,startId), endId, 0, longest, path);
+        let distance = this.pathBetweenUtil(new Edge<E>(-1, startId, new edgeType()), endId, 0, longest, path);
         if (each) {
             path.forEach(each);
         }

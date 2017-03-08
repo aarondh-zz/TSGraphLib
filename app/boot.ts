@@ -4,7 +4,13 @@ function boot(): void {
     var contentDiv = document.getElementById('content') as HTMLDivElement;
     var main = new Main(contentDiv);
     //main.loadGraph(jsonScriptElement.innerText);
-    main.testDetective("gunfight",[
+    main.testDetective("gunfight 1", [
+        ["shouting", "fight", "fleeing"],
+        ["fight", "gunshot", "panic", "fleeing"],
+        ["anger", "shouting"]
+    ]
+    );
+    main.testDetective("gunfight 2", [
         ["fight", "gunshot", "fleeing"],
         ["gunshot", "falling", "fleeing"]
     ]
