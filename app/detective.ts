@@ -49,10 +49,18 @@ class MyWordCanvasRenderer extends CanvasRenderer<Word, Edge> {
                 }
         }
     }
+    public getEdgeLabel(edge: IEdge<Edge>): string {
+        if (edge.payload.followed) {
+            return "✔";
+        }
+        else {
+            return "❌";
+        }
+    }
     public getEdgeStyle(edge: IEdge<Edge>): EdgeStyle {
         if (edge.payload.followed) {
             return {
-                lineStyle: FollowedEdgeTextStyle
+                lineStyle: FollowedEdgeTextStyle,
             }
         }
     }
