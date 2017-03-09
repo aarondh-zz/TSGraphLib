@@ -1,4 +1,10 @@
 "use strict";
+var utils_1 = require("./utils");
+/*    Edge<E>
+ *
+ *    an Graph internal representation of an IEdge<E>
+ *
+ */
 var Edge = (function () {
     function Edge(_fromId, _toId, payload) {
         this._fromId = _fromId;
@@ -30,6 +36,11 @@ var Edge = (function () {
     Edge._nextId = 1;
     return Edge;
 }());
+/*   Vertex<V,E>
+ *
+ *    an Graph internal representation of an IVertex<V>
+ *
+ */
 var Vertex = (function () {
     function Vertex(_id, payload) {
         this._id = _id;
@@ -187,12 +198,6 @@ var Graph = (function () {
         });
         return leafs;
     };
-    Graph.prototype.getEdgeLength = function (edge) {
-        if (edge && edge.payload && typeof edge.payload["length"] === "number") {
-            return edge.payload["length"];
-        }
-        return 1.0;
-    };
     // A recursive function used by longestPath. See below link for details
     // http://www.geeksforgeeks.org/topological-sorting/
     Graph.prototype.topologicalSortUtil = function (vertexId, stack, visited) {
@@ -211,10 +216,13 @@ var Graph = (function () {
     };
     // The function to find longest distances from a given vertex. It uses
     // recursive topologicalSortUtil() to get topological sorting.
-    Graph.prototype.longestPath = function (startId, each) {
+    Graph.prototype.longestPath = function (startId, each, costProvider) {
         var stack = [];
-        var distance = [];
+        var cost = [];
         var visited = [];
+        if (!costProvider) {
+            costProvider = function (edge, vertex) { return 1.0; };
+        }
         // Call the recursive helper function to store Topological Sort
         // starting from all vertices's one by one
         for (var id = 0; id < this._vertices.length; id++) {
@@ -225,30 +233,30 @@ var Graph = (function () {
         // Initialize distances to all vertices as infinite and distance
         // to source as 0
         for (var id = 0; id < this._vertices.length; id++) {
-            distance[id] = Infinity;
+            cost[id] = Infinity;
         }
-        distance[startId] = 0;
+        cost[startId] = 0;
         // Process vertices in topological order
         while (stack.length > 0) {
             // Get the next vertex from topological order
             var next = stack.pop();
             // Update distances of all adjacent vertices's
-            if (distance[next] !== Infinity) {
+            if (cost[next] !== Infinity) {
                 var vertex = this.getVertex(next);
                 var adjacent = vertex.adjacent;
                 if (adjacent) {
                     for (var i = 0; i < adjacent.length; i++) {
                         var edge = adjacent[i];
-                        var length_1 = this.getEdgeLength(edge);
-                        if (distance[edge.toId] < distance[next] + length_1) {
-                            distance[edge.toId] = distance[next] + length_1;
+                        var length_1 = costProvider(edge, this.getVertex(edge.toId));
+                        if (cost[edge.toId] < cost[next] + length_1) {
+                            cost[edge.toId] = cost[next] + length_1;
                         }
                     }
                 }
             }
         }
         for (var id = 0; id < this._vertices.length; id++) {
-            each(this.getVertex(id), distance[id]);
+            each(this.getVertex(id), cost[id]);
         }
     };
     Graph.prototype.getEdgeCount = function (vertexId) {
@@ -265,43 +273,65 @@ var Graph = (function () {
         }
         return edges;
     };
-    Graph.prototype.pathBetweenUtil = function (edge, endId, distance, longest, path, unusedEdges) {
+    /* pathBetweenUtil
+     *
+     *    an internal function used by pathBetween
+     *
+     *    parameters:
+     *
+     *       edge: the edge being traversed
+     *
+     *       editId: the id of the ending vertex
+     *
+     *       cost: the cost of traversal so far
+     *
+     *       path:  an array of edges travelled so far
+     *
+     *       context: see pathBetween options
+     *
+     *   returns:
+     *
+     *       the total cost of traversing the path returned in the path array
+     *
+     *       if Infinity, the ending vertex could not be reached
+     */
+    Graph.prototype.pathBetweenUtil = function (edge, endId, cost, path, context) {
         var vertex = this.getVertex(edge.toId);
         path.push(edge);
+        cost += context.costProvider(edge, vertex);
         if (edge.toId == endId) {
-            return distance;
+            return cost;
         }
         var adjacent = vertex.adjacent;
         if (adjacent) {
-            var selectedDistance = longest ? -Infinity : Infinity;
+            var selectedDistance = context.longest ? -Infinity : Infinity;
             var selectedPath = void 0;
             var selectedEdge = null;
             for (var i = 0; i < adjacent.length; i++) {
                 var edge_1 = adjacent[i];
                 if (!this.isRemovedEdge(edge_1)) {
-                    var length_2 = this.getEdgeLength(edge_1);
                     this.removeEdge(edge_1);
                     var nextPath = [];
-                    var result = this.pathBetweenUtil(edge_1, endId, distance + length_2, longest, nextPath, unusedEdges);
+                    var result = this.pathBetweenUtil(edge_1, endId, cost, nextPath, context);
                     if (result !== Infinity) {
-                        if (longest && selectedDistance < result) {
+                        if (context.longest && selectedDistance < result) {
                             if (selectedEdge) {
-                                unusedEdges.push(selectedEdge);
+                                context.unusedEdges.push(selectedEdge);
                             }
                             selectedPath = nextPath;
                             selectedDistance = result;
                             selectedEdge = edge_1;
                         }
-                        else if (!longest && selectedDistance > result) {
+                        else if (!context.longest && selectedDistance > result) {
                             if (selectedEdge) {
-                                unusedEdges.push(selectedEdge);
+                                context.unusedEdges.push(selectedEdge);
                             }
                             selectedPath = nextPath;
                             selectedDistance = result;
                             selectedEdge = edge_1;
                         }
                         else {
-                            unusedEdges.push(edge_1);
+                            context.unusedEdges.push(edge_1);
                         }
                     }
                     this.unremoveEdge(edge_1);
@@ -311,22 +341,56 @@ var Graph = (function () {
                 for (var i = 0; i < selectedPath.length; i++) {
                     path.push(selectedPath[i]);
                 }
-                return distance + selectedDistance;
+                return cost + selectedDistance;
             }
         }
         return Infinity;
     };
-    Graph.prototype.pathBetween = function (startId, endId, longest, edgeType, each, unusedEdges, unusedVertices) {
+    /*
+     * pathBetween
+     *
+     * A brute force graph walking algorithm to walk the longest or shortest path between two vertices's
+     *
+     * it optionally returns an array of unused viable edges and/or an array of unused vertices's
+     *
+     * parameters:
+     *
+     *    startId:  the id of the starting vertex
+     *
+     *    endId: the id of the ending vertex
+     *
+     *    each: callback function to receive each edge traversed in the winning path
+     *
+     *    options: an array of PathBetweenOptions as follows:
+     *
+     *          options.longest:  if true the longest path with be followed, else shortest (default: true)
+     *
+     *          options.unusedEdges: an array that accumulates all unused viable edges
+     *
+     *          options.unusedVertices:  an array of all vertices's not visited in the winning path
+     *
+     *          options.costProvider: a callback function that returns the cost of traversing one edge/vertex
+     *
+     *   returns:
+     *
+     *       the total cost of traversing the winning path
+     *
+     *       if Infinity, the ending vertex could not be reached
+     */
+    Graph.prototype.pathBetween = function (startId, endId, each, options) {
         if (each === void 0) { each = null; }
-        if (unusedEdges === void 0) { unusedEdges = []; }
-        if (unusedVertices === void 0) { unusedVertices = null; }
         var path = [];
-        unusedEdges.splice(0, unusedEdges.length);
-        var distance = this.pathBetweenUtil(new Edge(-1, startId, new edgeType()), endId, 0, longest, path, unusedEdges);
+        var context = utils_1.objectAssign({}, {
+            longest: true,
+            costProvider: function (edge, vertex) { return 1.0; },
+            unusedEdges: []
+        }, options);
+        context.unusedEdges.splice(0, context.unusedEdges.length);
+        var cost = this.pathBetweenUtil({ id: -1, fromId: -1, toId: startId }, endId, 0, path, context);
         if (each) {
             path.forEach(each);
         }
-        if (unusedVertices) {
+        if (context.unusedVertices) {
             var visited = [];
             visited[startId] = true;
             for (var i = 0; i < path.length; i++) {
@@ -334,11 +398,11 @@ var Graph = (function () {
             }
             for (var id = 0; id < this._vertices.length; id++) {
                 if (!visited[id]) {
-                    unusedVertices.push(this.getVertex(id));
+                    context.unusedVertices.push(this.getVertex(id));
                 }
             }
         }
-        return distance;
+        return cost;
     };
     //mark all other edges in the vertex containing unused edges as removed
     Graph.prototype.markUnused = function (unused) {
@@ -433,14 +497,14 @@ var Graph = (function () {
         if (all === void 0) { all = false; }
         var vertex = this.getVertex(startId); //validate
         var visited = [];
-        var vertices = [];
+        var travelledEdges = [];
         var index = 0;
         visited[startId] = true;
-        vertices.push(startId);
-        while (index < vertices.length) {
-            var vertexId = vertices[index++];
-            var vertex = this.getVertex(vertexId);
-            var result = each(vertex);
+        travelledEdges.push({ id: -1, fromId: -1, toId: startId });
+        while (index < travelledEdges.length) {
+            var travelled = travelledEdges[index++];
+            var vertex = this.getVertex(travelled.toId);
+            var result = each(vertex, travelled);
             if (typeof result === 'boolean') {
                 if (!result) {
                     return;
@@ -452,17 +516,17 @@ var Graph = (function () {
                     if (all || !_this.isRemovedEdge(edge)) {
                         if (!visited[edge.toId]) {
                             visited[edge.toId] = true;
-                            vertices.push(edge.toId);
+                            travelledEdges.push(edge);
                         }
                     }
                 });
             }
         }
     };
-    Graph.prototype._forEachVertexDF = function (id, each, all, visited) {
-        var vertex = this.getVertex(id);
-        visited[id] = true;
-        var result = each(vertex);
+    Graph.prototype._forEachVertexDF = function (travelled, each, all, visited) {
+        var vertex = this.getVertex(travelled.toId);
+        visited[vertex.id] = true;
+        var result = each(vertex, travelled);
         if (typeof result === 'boolean') {
             if (!result) {
                 return false;
@@ -474,7 +538,7 @@ var Graph = (function () {
                 var edge = adjacent[i];
                 if (all || !this.isRemovedEdge(edge)) {
                     if (!visited[edge.toId]) {
-                        if (!this._forEachVertexDF(edge.toId, each, all, visited)) {
+                        if (!this._forEachVertexDF(edge, each, all, visited)) {
                             return false;
                         }
                     }
@@ -485,7 +549,7 @@ var Graph = (function () {
     };
     Graph.prototype.forEachVertexDepthFirst = function (startId, each, all) {
         if (all === void 0) { all = false; }
-        this._forEachVertexDF(startId, each, all, []);
+        this._forEachVertexDF({ id: -1, fromId: -1, toId: startId }, each, all, []);
     };
     Graph.prototype.dfsCount = function (vertexId) {
         var count = 0;

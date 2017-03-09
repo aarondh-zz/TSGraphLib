@@ -1,5 +1,12 @@
 "use strict";
 var detective_1 = require("./detective");
+/*  boot
+ *
+ *    boots the set of Detective tests
+ *
+ *       used by Detective.html
+ *
+ */
 function boot() {
     var contentDiv = document.getElementById('content');
     var detective = new detective_1.Detective(contentDiv);

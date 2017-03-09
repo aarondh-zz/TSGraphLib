@@ -9,11 +9,16 @@ var animate_1 = require("../lib/animate");
 var canvasRenderer_1 = require("../lib/canvasRenderer");
 var forceDirected_1 = require("../lib/forceDirected");
 var testHarness_1 = require("../test/testHarness");
-var NodeTextStyle = "black";
-var VisitedTextStyle = "blue";
-var RootTextStyle = "green";
-var LeafTextStyle = "red";
-var FollowedEdgeTextStyle = "green";
+var NodeTextStyle = "black"; //The color of the text of a normal (unvisted) node 
+var VisitedTextStyle = "blue"; //The color of a visited node
+var RootTextStyle = "green"; //The color of a root node
+var LeafTextStyle = "red"; //The color of a leaf node
+var FollowedEdgeTextStyle = "green"; //The color of a traversed edge
+/* VertexType
+ *
+ *  The types of vertices's (used for displaying distinct styles)
+ *
+ */
 var VertexType;
 (function (VertexType) {
     VertexType[VertexType["Node"] = 0] = "Node";
@@ -21,6 +26,11 @@ var VertexType;
     VertexType[VertexType["Root"] = 2] = "Root";
     VertexType[VertexType["Leaf"] = 3] = "Leaf";
 })(VertexType || (VertexType = {}));
+/*  a class representing an word payload
+ *
+ *     setting followed to true, causes the edge to be displayed in green
+ *
+ */
 var Word = (function () {
     function Word(label, type) {
         if (type === void 0) { type = VertexType.Node; }
@@ -30,6 +40,11 @@ var Word = (function () {
     return Word;
 }());
 exports.Word = Word;
+/*  a class representing an edge payload
+ *
+ *     setting followed to true, causes the edge to be displayed in green
+ *
+ */
 var Edge = (function () {
     function Edge(followed) {
         if (followed === void 0) { followed = false; }
@@ -38,16 +53,20 @@ var Edge = (function () {
     return Edge;
 }());
 exports.Edge = Edge;
-// overrides the normal canvas renderer and provides coloring for the graph
-var MyWordCanvasRenderer = (function (_super) {
-    __extends(MyWordCanvasRenderer, _super);
-    function MyWordCanvasRenderer(layout, canvasElement) {
+/* TimelineCanvasRenderer
+ *
+ * overrides the normal canvas renderer and provides coloring for time line graph
+ *
+ */
+var TimelineCanvasRenderer = (function (_super) {
+    __extends(TimelineCanvasRenderer, _super);
+    function TimelineCanvasRenderer(layout, canvasElement) {
         _super.call(this, layout, canvasElement);
     }
-    MyWordCanvasRenderer.prototype.getVertexLabel = function (vertex) {
+    TimelineCanvasRenderer.prototype.getVertexLabel = function (vertex) {
         return vertex.payload.label;
     };
-    MyWordCanvasRenderer.prototype.getVertexStyle = function (vertex) {
+    TimelineCanvasRenderer.prototype.getVertexStyle = function (vertex) {
         switch (vertex.payload.type) {
             case VertexType.Node:
                 return {
@@ -67,7 +86,7 @@ var MyWordCanvasRenderer = (function (_super) {
                 };
         }
     };
-    MyWordCanvasRenderer.prototype.getEdgeLabel = function (edge) {
+    TimelineCanvasRenderer.prototype.getEdgeLabel = function (edge) {
         if (edge.payload.followed) {
             return "✔";
         }
@@ -75,25 +94,46 @@ var MyWordCanvasRenderer = (function (_super) {
             return "❌";
         }
     };
-    MyWordCanvasRenderer.prototype.getEdgeStyle = function (edge) {
+    TimelineCanvasRenderer.prototype.getEdgeStyle = function (edge) {
         if (edge.payload.followed) {
             return {
                 lineStyle: FollowedEdgeTextStyle,
             };
         }
     };
-    return MyWordCanvasRenderer;
+    return TimelineCanvasRenderer;
 }(canvasRenderer_1.CanvasRenderer));
+/* The Detective algorithm
+ *
+ *   see /app/dectective/docs/Detective.doc
+ *
+ */
 var Detective = (function () {
+    /* construct a new Detective
+     *
+     *   parameters:
+     *
+     *       contentElement: an html div element that will contain the output of a test of the detective (see test)
+     *
+     */
     function Detective(contentElement) {
         this.contentElement = contentElement;
-        this.testHarness = new testHarness_1.TestHarness(contentElement);
+        this._testHarness = new testHarness_1.TestHarness(contentElement);
         this._timeline = new graph_1.Graph();
-        this._statementCount = 0;
     }
+    /*  clear
+     *     clears the current timeline
+     *
+     */
     Detective.prototype.clear = function () {
         this._timeline.clear();
     };
+    /* addStatement
+     *
+     *  parameters:
+     *      words: an array of words making up one statement
+     *
+     */
     Detective.prototype.addStatement = function (words) {
         if (words) {
             var statement_1 = new graph_1.Graph();
@@ -111,21 +151,51 @@ var Detective = (function () {
         }
     };
     Object.defineProperty(Detective.prototype, "timeline", {
+        /* timeline
+         *
+         *     the graph representing all possible time lines
+         *
+         */
         get: function () {
             return this._timeline;
         },
         enumerable: true,
         configurable: true
     });
-    Detective.prototype.getRenderer = function (layout, canvasElement) {
-        return new MyWordCanvasRenderer(layout, canvasElement);
+    /*
+     * createRenderer
+     *
+     *   parameters:
+     *
+     *      layout:  the layout engine used to layout the time line
+     *
+     *      canvasElement:  an html canvas element in which the time line will be rendered
+     *
+     *  returns:
+     *
+     *     the time line renderer
+     *
+     */
+    Detective.prototype.createRenderer = function (layout, canvasElement) {
+        return new TimelineCanvasRenderer(layout, canvasElement);
     };
+    /*
+     * getTimelines
+     *
+     *   returns:
+     *
+     *      an array of potential timelines (string arrays)
+     */
     Detective.prototype.getTimelines = function () {
         var _this = this;
         var timelines = [];
         var roots = this._timeline.roots();
         var leafs = this._timeline.leafs();
-        var unusedEdges;
+        var options = {
+            longest: true,
+            unusedVertices: [],
+            unusedEdges: []
+        };
         roots.forEach(function (vertex) {
             vertex.payload.type = VertexType.Root;
         });
@@ -134,53 +204,68 @@ var Detective = (function () {
         });
         for (var r = 0; r < roots.length; r++) {
             for (var l = 0; l < leafs.length; l++) {
-                var unusedVertices = [];
-                var counter = 0;
+                options.unusedVertices = []; //accumulate unused vertices for each root-leaf pair
+                var counter = 0; //loop buster
                 var _loop_1 = function() {
                     var statement = [];
-                    unusedEdges = [];
-                    var distance = this_1._timeline.pathBetween(roots[r].id, leafs[l].id, true, Edge, function (edge) {
+                    options.unusedEdges = []; //clear unused edges for each statement
+                    var distance = this_1._timeline.pathBetween(roots[r].id, leafs[l].id, function (edge) {
                         var vertex = _this._timeline.getVertex(edge.toId);
                         if (vertex.payload.type == VertexType.Node) {
                             vertex.payload.type = VertexType.Visited;
                         }
-                        edge.payload.followed = true;
+                        if (edge.payload) {
+                            edge.payload.followed = true;
+                        }
                         statement.push(vertex.payload.label);
-                    }, unusedEdges, unusedVertices);
+                    }, options);
                     if (distance !== Infinity) {
+                        //path found from root to leaf
                         timelines.push(statement);
                     }
-                    if (unusedEdges.length > 0) {
-                        this_1._timeline.markUnused(unusedEdges); //TBD: Need to only do this if < all vertices are visited
+                    if (options.unusedEdges.length > 0 && options.unusedVertices.length > 0) {
+                        //this removes all other edge options on each vertex containing an edge unused in the last path
+                        this_1._timeline.markUnused(options.unusedEdges);
                     }
                 };
                 var this_1 = this;
                 do {
                     _loop_1();
-                } while (unusedEdges.length > 0 && unusedVertices.length > 0 && ++counter < 10);
+                } while (options.unusedEdges.length > 0 && options.unusedVertices.length > 0 && ++counter < 10);
                 this._timeline.unremoveAllEdges();
             }
         }
         return timelines;
     };
+    /*  test
+     *
+     *     do one test of the detective algorithm
+     *
+     *  parameters:
+     *
+     *      title: the title of the test
+     *
+     *      statements: an array of statements (string arrays)
+     *
+     */
     Detective.prototype.test = function (title, statements) {
         var _this = this;
         this.clear();
-        this.testHarness.newTest(title);
-        this.testHarness.writeLine();
-        this.testHarness.writeLine("statements: ");
-        this.testHarness.writeLine(JSON.stringify(statements, null, 2));
+        this._testHarness.newTest(title);
+        this._testHarness.writeLine();
+        this._testHarness.writeLine("statements: ");
+        this._testHarness.writeLine(JSON.stringify(statements, null, 2));
         statements.forEach(function (statement) {
             _this.addStatement(statement);
         });
         var layout = new forceDirected_1.ForceDirected(this.timeline, 400.0, 400.0, 0.5, 0.00001, Infinity);
-        var renderer = this.getRenderer(layout, this.testHarness.canvas);
+        var renderer = this.createRenderer(layout, this._testHarness.canvas);
         var animate = new animate_1.Animate(layout, renderer);
         renderer.start();
         animate.start();
-        this.testHarness.writeLine();
-        this.testHarness.writeLine("timelines: ");
-        this.testHarness.writeLine(JSON.stringify(this.getTimelines(), null, 2));
+        this._testHarness.writeLine();
+        this._testHarness.writeLine("timelines: ");
+        this._testHarness.writeLine(JSON.stringify(this.getTimelines(), null, 2));
     };
     return Detective;
 }());

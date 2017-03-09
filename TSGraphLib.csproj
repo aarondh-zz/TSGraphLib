@@ -32,6 +32,7 @@
   <ItemGroup>
     <TypeScriptCompile Include="app\lib\animate.ts" />
     <TypeScriptCompile Include="app\detective\detectiveTestBoot.ts" />
+    <TypeScriptCompile Include="app\lib\utils.ts" />
     <TypeScriptCompile Include="app\test\forceDirectedTestBoot.ts" />
     <TypeScriptCompile Include="app\test\testHarness.ts" />
     <TypeScriptCompile Include="app\test\forceDirectedTest.ts" />

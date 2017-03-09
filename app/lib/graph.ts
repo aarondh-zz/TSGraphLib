@@ -1,4 +1,5 @@
-﻿export interface IVertex<T> {
+﻿import { objectAssign } from "./utils";
+export interface IVertex<T> {
     id: number;
     payload: T;
 }
@@ -26,6 +27,33 @@ export interface EdgeComparer<E> {
 export interface EdgeFilter<E> {
     (edge: IEdge<E>): boolean;
 }
+/* Cost Provider
+ *
+ *   provides the cost of traversing one edge/vertex
+ *   note that the initial edge may have a null payload
+ *
+ */
+export interface CostProvider<V, E> {
+    (edge: IEdge<E>, vertex: IVertex<V>): number;
+}
+/* PathBetweenOptions
+ *
+ * options provided to the pathBetween method
+ *
+ *    for details see pathBetween
+ *
+ */
+export interface PathBetweenOptions<V, E> {
+    longest?: boolean;
+    costProvider?: CostProvider<V,E>;
+    unusedEdges?: IEdge<E>[],
+    unusedVertices?: IVertex<V>[]
+}
+/*    Edge<E>
+ *
+ *    an Graph internal representation of an IEdge<E>
+ *
+ */
 class Edge<E> implements IEdge<E>
 {
     private static _nextId = 1;
@@ -42,6 +70,11 @@ class Edge<E> implements IEdge<E>
     constructor(private _fromId: number, private _toId: number, public payload?: E) {
     }
 }
+/*   Vertex<V,E>
+ *
+ *    an Graph internal representation of an IVertex<V>
+ *
+ */
 class Vertex<V,E> implements IVertex<V>
 {
     public adjacent: Edge<E>[];
@@ -67,10 +100,12 @@ class Vertex<V,E> implements IVertex<V>
         return edge;
     }
 }
+
 export interface IGraph<V, E> {
     vertices: IVertex<V>[];
     edges: IEdge<E>[];
 }
+
 export class Graph<V, E> {
     private _vertices: Vertex<V, E>[];
     private _listeners: GraphListener[] = [];
@@ -185,12 +220,6 @@ export class Graph<V, E> {
         });
         return leafs;
     }
-    public getEdgeLength(edge: IEdge<E>) {
-        if (edge && edge.payload && typeof edge.payload["length"] === "number") {
-            return edge.payload["length"];
-        }
-        return 1.0;
-    }
     // A recursive function used by longestPath. See below link for details
     // http://www.geeksforgeeks.org/topological-sorting/
     public topologicalSortUtil(vertexId: number, stack: number[], visited: boolean[])
@@ -212,11 +241,15 @@ export class Graph<V, E> {
     }
     // The function to find longest distances from a given vertex. It uses
     // recursive topologicalSortUtil() to get topological sorting.
-    public longestPath(startId: number, each: (vertex: IVertex<V>, distance: number) => void) {
+    public longestPath(startId: number, each: (vertex: IVertex<V>, cost: number) => void, costProvider?: CostProvider<V,E>) {
         let stack: number[] = [];
-        let distance: number[] = [];
+        let cost: number[] = [];
 
-        let visited: boolean[] = []
+        let visited: boolean[] = [];
+
+        if (!costProvider) {
+            costProvider = (edge, vertex) => { return 1.0 };
+        }
 
         // Call the recursive helper function to store Topological Sort
         // starting from all vertices's one by one
@@ -229,9 +262,9 @@ export class Graph<V, E> {
         // Initialize distances to all vertices as infinite and distance
         // to source as 0
         for (let id = 0; id < this._vertices.length; id++) {
-            distance[id] = Infinity;
+            cost[id] = Infinity;
         }
-        distance[startId] = 0;
+        cost[startId] = 0;
 
         // Process vertices in topological order
         while (stack.length > 0) {
@@ -239,22 +272,22 @@ export class Graph<V, E> {
             let next = stack.pop();
 
             // Update distances of all adjacent vertices's
-            if (distance[next] !== Infinity) {
+            if (cost[next] !== Infinity) {
                 let vertex = this.getVertex(next);
                 let adjacent = vertex.adjacent;
                 if (adjacent) {
                     for (let i = 0; i < adjacent.length; i++) {
                         let edge = adjacent[i];
-                        let length = this.getEdgeLength(edge);
-                        if (distance[edge.toId] < distance[next] + length) {
-                            distance[edge.toId] = distance[next] + length;
+                        let length = costProvider(edge,this.getVertex(edge.toId));
+                        if (cost[edge.toId] < cost[next] + length) {
+                            cost[edge.toId] = cost[next] + length;
                         }
                     }
                 }
             }
         }
         for (let id = 0; id < this._vertices.length; id++) {
-            each(this.getVertex(id), distance[id]);
+            each(this.getVertex(id), cost[id]);
         }
     }
     public getEdgeCount(vertexId:number) {
@@ -271,43 +304,65 @@ export class Graph<V, E> {
         }
         return edges;
     }
-    private pathBetweenUtil(edge:IEdge<E>, endId: number, distance: number, longest: boolean, path: IEdge<E>[], unusedEdges: IEdge<E>[]): number {
+    /* pathBetweenUtil
+     *
+     *    an internal function used by pathBetween
+     *
+     *    parameters:
+     *
+     *       edge: the edge being traversed
+     *
+     *       editId: the id of the ending vertex
+     *
+     *       cost: the cost of traversal so far
+     *
+     *       path:  an array of edges travelled so far
+     *
+     *       context: see pathBetween options
+     *
+     *   returns:
+     *
+     *       the total cost of traversing the path returned in the path array
+     *
+     *       if Infinity, the ending vertex could not be reached
+     */
+    private pathBetweenUtil(edge:IEdge<E>, endId: number, cost: number, path: IEdge<E>[], context: PathBetweenOptions<V,E>): number {
         let vertex = this.getVertex(edge.toId);
         path.push(edge);
+        cost += context.costProvider(edge, vertex);
         if (edge.toId == endId) {
-            return distance;
+            return cost;
         }
         let adjacent = vertex.adjacent;
         if (adjacent) {
-            let selectedDistance = longest? -Infinity: Infinity;
+            let selectedDistance = context.longest? -Infinity: Infinity;
             let selectedPath: IEdge<E>[];
             let selectedEdge: IEdge<E> = null;
             for (let i = 0; i < adjacent.length; i++) {
                 let edge = adjacent[i];
                 if (!this.isRemovedEdge(edge)) {
-                    let length = this.getEdgeLength(edge);
                     this.removeEdge(edge);
                     let nextPath:IEdge<E>[] = [];
-                    let result = this.pathBetweenUtil(edge, endId, distance + length, longest, nextPath, unusedEdges);
+                    let result = this.pathBetweenUtil(edge, endId, cost, nextPath, context);
                     if (result !== Infinity) {
-                        if (longest && selectedDistance < result) {
+                        if (context.longest && selectedDistance < result) {
                             if (selectedEdge) {
-                                unusedEdges.push(selectedEdge);
+                                context.unusedEdges.push(selectedEdge);
                             }
                             selectedPath = nextPath;
                             selectedDistance = result;
                             selectedEdge = edge;
                         }
-                        else if (!longest && selectedDistance > result) {
+                        else if (!context.longest && selectedDistance > result) {
                             if (selectedEdge) {
-                                unusedEdges.push(selectedEdge);
+                                context.unusedEdges.push(selectedEdge);
                             }
                             selectedPath = nextPath;
                             selectedDistance = result;
                             selectedEdge = edge;
                        }
                        else {
-                           unusedEdges.push(edge);
+                           context.unusedEdges.push(edge);
                        }
                         
                     }
@@ -318,19 +373,60 @@ export class Graph<V, E> {
                 for (let i = 0; i < selectedPath.length; i++) {
                     path.push(selectedPath[i]);
                 }
-                return distance + selectedDistance;
+                return cost + selectedDistance;
             }
         }
         return Infinity;
     }
-    public pathBetween(startId: number, endId: number, longest: boolean, edgeType: new () => E, each: (vertex: IEdge<E>) =>void = null, unusedEdges: IEdge<E>[] = [], unusedVertices:IVertex<V>[] = null ): number {
+    /*
+     * pathBetween
+     *
+     * A brute force graph walking algorithm to walk the longest or shortest path between two vertices's
+     *
+     * it optionally returns an array of unused viable edges and/or an array of unused vertices's
+     *
+     * parameters:
+     *
+     *    startId:  the id of the starting vertex
+     *
+     *    endId: the id of the ending vertex
+     *
+     *    each: callback function to receive each edge traversed in the winning path
+     *
+     *    options: an array of PathBetweenOptions as follows:
+     *
+     *          options.longest:  if true the longest path with be followed, else shortest (default: true)
+     *
+     *          options.unusedEdges: an array that accumulates all unused viable edges
+     *
+     *          options.unusedVertices:  an array of all vertices's not visited in the winning path
+     *
+     *          options.costProvider: a callback function that returns the cost of traversing one edge/vertex
+     *
+     *   returns:
+     *
+     *       the total cost of traversing the winning path
+     *
+     *       if Infinity, the ending vertex could not be reached
+     */
+    public pathBetween(startId: number, endId: number, each: (edge: IEdge<E>) =>void = null, options?: PathBetweenOptions<V,E> ): number {
         var path: IEdge<E>[] = [];
-        unusedEdges.splice(0, unusedEdges.length);
-        let distance = this.pathBetweenUtil(new Edge<E>(-1, startId, new edgeType()), endId, 0, longest, path, unusedEdges);
+
+        var context = objectAssign<PathBetweenOptions<V, E>>({}, {
+            longest: true,
+            costProvider: (edge,vertex) => { return 1.0; },
+            unusedEdges: []
+        }, options);
+
+        context.unusedEdges.splice(0, context.unusedEdges.length);
+
+        let cost = this.pathBetweenUtil({ id: -1, fromId: -1, toId: startId }, endId, 0, path, context);
+
         if (each) {
             path.forEach(each);
         }
-        if (unusedVertices) {
+
+        if (context.unusedVertices) {
            var visited: boolean[] = [];
            visited[startId] = true;
            for (let i = 0; i < path.length; i++) {
@@ -338,11 +434,11 @@ export class Graph<V, E> {
             }
             for (let id = 0; id < this._vertices.length; id++) {
                 if (!visited[id]) {
-                    unusedVertices.push(this.getVertex(id));
+                    context.unusedVertices.push(this.getVertex(id));
                 }
             }
         }
-        return distance;
+        return cost;
     }
     //mark all other edges in the vertex containing unused edges as removed
     public markUnused(unused: IEdge<E>[]) : void {
@@ -440,23 +536,23 @@ export class Graph<V, E> {
             }
         });
     }
-    public forEachVertexBreadthFirst(startId: number, each: (vertex: IVertex<V>) => void, all: boolean = false): void {
+    public forEachVertexBreadthFirst(startId: number, each: (vertex: IVertex<V>, edge?: IEdge<E>) => void, all: boolean = false): void {
         var vertex = this.getVertex(startId); //validate
 
         var visited: boolean[] = [];
 
-        var vertices: number[] = [];
+        var travelledEdges: IEdge<E>[] = [];
 
         var index = 0;
 
         visited[startId] = true;
 
-        vertices.push(startId);
+        travelledEdges.push({ id: -1, fromId:-1, toId: startId });
 
-        while (index < vertices.length) {
-            var vertexId = vertices[index++];
-            var vertex = this.getVertex(vertexId);
-            var result = each(vertex);
+        while (index < travelledEdges.length) {
+            var travelled = travelledEdges[index++];
+            var vertex = this.getVertex(travelled.toId);
+            var result = each(vertex, travelled);
             if (typeof result === 'boolean') {
                 if (!result) {
                     return;
@@ -469,17 +565,17 @@ export class Graph<V, E> {
                     if (all || !this.isRemovedEdge(edge)) {
                         if (!visited[edge.toId]) {
                             visited[edge.toId] = true;
-                            vertices.push(edge.toId);
+                            travelledEdges.push(edge);
                         }
                     }
                 });
             }
         }
     }
-    private _forEachVertexDF(id: number, each: (vertex: IVertex<V>) => any, all:boolean, visited: boolean[]): boolean {
-        var vertex = this.getVertex(id);
-        visited[id] = true;
-        var result = each(vertex);
+    private _forEachVertexDF(travelled: IEdge<E>, each: (vertex: IVertex<V>, edge?: IEdge<E>) => any, all:boolean, visited: boolean[]): boolean {
+        var vertex = this.getVertex(travelled.toId);
+        visited[vertex.id] = true;
+        var result = each(vertex, travelled);
         if (typeof result === 'boolean') {
             if (!result) {
                 return false;
@@ -491,7 +587,7 @@ export class Graph<V, E> {
                 let edge = adjacent[i];
                 if (all || !this.isRemovedEdge(edge)) {
                     if (!visited[edge.toId]) {
-                        if (!this._forEachVertexDF(edge.toId, each, all, visited)) {
+                        if (!this._forEachVertexDF(edge, each, all, visited)) {
                             return false;
                         }
                     }
@@ -500,8 +596,8 @@ export class Graph<V, E> {
         }
         return true;
     }
-    public forEachVertexDepthFirst(startId: number, each: (vertex: IVertex<V>) => any, all: boolean = false): void {
-        this._forEachVertexDF(startId, each, all, []);
+    public forEachVertexDepthFirst(startId: number, each: (vertex: IVertex<V>, edge?: IEdge<E>) => any, all: boolean = false): void {
+        this._forEachVertexDF({ id: -1, fromId: -1, toId: startId }, each, all, []);
     }
     public dfsCount(vertexId: number): number {
         var count = 0;

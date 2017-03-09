@@ -1,4 +1,11 @@
 ﻿import { Detective } from "./detective";
+/*  boot
+ *
+ *    boots the set of Detective tests
+ *
+ *       used by Detective.html
+ *
+ */
 function boot(): void {
     var contentDiv = document.getElementById('content') as HTMLDivElement;
 

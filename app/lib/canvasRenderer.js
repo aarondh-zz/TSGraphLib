@@ -1,19 +1,6 @@
 "use strict";
 var math_1 = require("./math");
-function objectAssign(target) {
-    var sources = [];
-    for (var _i = 1; _i < arguments.length; _i++) {
-        sources[_i - 1] = arguments[_i];
-    }
-    if (sources) {
-        sources.forEach(function (source) {
-            for (var key in source) {
-                target[key] = source[key];
-            }
-        });
-    }
-    return target;
-}
+var utils_1 = require("./utils");
 var defaultVertexStyle = {
     font: "12px Verdana, sans-serif",
     backgroundStyle: "#FFFFE0",
@@ -121,7 +108,7 @@ var CanvasRenderer = (function () {
         var s = this.toScreen(position);
         var dc = this.drawingContext;
         dc.save();
-        var vertexStyle = objectAssign({}, this.defaultVertexStyle, this.getVertexStyle(vertex));
+        var vertexStyle = utils_1.objectAssign({}, this.defaultVertexStyle, this.getVertexStyle(vertex));
         var contentWidth;
         var vertexLabel = this.getVertexLabel(vertex) || vertex.id.toString();
         if (vertex["_textWidth"]) {
@@ -152,7 +139,7 @@ var CanvasRenderer = (function () {
         var p2 = this.toScreen(position2);
         var direction = p2.subtract(p1);
         var normal = direction.normal().normalise();
-        var edgeStyle = objectAssign({}, this.defaultEdgeStyle, this.getEdgeStyle(edge));
+        var edgeStyle = utils_1.objectAssign({}, this.defaultEdgeStyle, this.getEdgeStyle(edge));
         var intersection;
         var targetBox = this._vertexSizes[edge.toId];
         if (targetBox) {

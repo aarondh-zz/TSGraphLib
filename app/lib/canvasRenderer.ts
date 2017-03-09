@@ -1,16 +1,7 @@
 ﻿import { IVertex, IEdge } from "./graph";
 import { Vector, Rectangle, intersectLineBox, Size } from "./math";
 import { Renderer, Layout } from "./animate";
-function objectAssign<T>(target: T, ...sources: T[]): T {
-    if (sources) {
-        sources.forEach((source) => {
-            for (let key in source) {
-                target[key] = source[key];
-            }
-        });
-    }
-    return target;
-}
+import { objectAssign } from "./utils";
 export interface Padding {
     left?: number;
     right?: number;
