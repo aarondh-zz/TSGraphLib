@@ -1,39 +1,48 @@
-﻿import { Main } from "./app";
+﻿import { Detective } from "./detective";
 function boot(): void {
-    var jsonScriptElement = document.getElementById('graphInput') as HTMLDivElement;
     var contentDiv = document.getElementById('content') as HTMLDivElement;
-    var main = new Main(contentDiv);
-    //main.loadGraph(jsonScriptElement.innerText);
-    main.testDetective("gunfight 1", [
+
+    var detective = new Detective(contentDiv);
+
+    detective.test("gunfight 1", [
         ["shouting", "fight", "fleeing"],
         ["fight", "gunshot", "panic", "fleeing"],
         ["anger", "shouting"]
     ]
     );
-    main.testDetective("gunfight 2", [
+
+    detective = new Detective(contentDiv);
+    detective.test("gunfight 2", [
         ["fight", "gunshot", "fleeing"],
         ["gunshot", "falling", "fleeing"]
     ]
     );
-    main.testDetective("mugging", [
+
+    detective = new Detective(contentDiv);
+    detective.test("mugging", [
         ["shadowy figure", "demands", "scream", "siren"],
         ["shadowy figure", "pointed gun", "scream"]
     ]
     );
-   main.testDetective("scandle", [
+
+    detective = new Detective(contentDiv);
+    detective.test("scandle", [
         ["argument", "stuff", "pointing"],
         ["press brief", "scandal", "pointing"],
         ["bribe", "coverup"]
     ]
     );
-    main.testDetective("arson", [
+
+    detective = new Detective(contentDiv);
+    detective.test("arson", [
         ["pouring gas", "laughing", "lighting match", "fire"] ,
         ["buying gas", "pouring gas", "crying", "fire", "smoke"] ,
     ]
 
     );
 
-    main.testDetective("numbers", [
+    detective = new Detective(contentDiv);
+    detective.test("numbers", [
         ["0"],
         ["1"],
         ["2"],
@@ -51,8 +60,6 @@ function boot(): void {
     ]
 
     );
-    /*main.testDF();
-    main.testBF();*/
 };
 
 boot();

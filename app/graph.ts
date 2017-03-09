@@ -271,33 +271,47 @@ export class Graph<V, E> {
         }
         return edges;
     }
-    private pathBetweenUtil(edge:IEdge<E>, endId: number, distance: number, longest: boolean, path: IEdge<E>[]): number {
+    private pathBetweenUtil(edge:IEdge<E>, endId: number, distance: number, longest: boolean, path: IEdge<E>[], unusedEdges: IEdge<E>[]): number {
+        let vertex = this.getVertex(edge.toId);
         path.push(edge);
         if (edge.toId == endId) {
             return distance;
         }
-        let vertex = this.getVertex(edge.toId);
         let adjacent = vertex.adjacent;
         if (adjacent) {
             let selectedDistance = longest? -Infinity: Infinity;
             let selectedPath: IEdge<E>[];
+            let selectedEdge: IEdge<E> = null;
             for (let i = 0; i < adjacent.length; i++) {
                 let edge = adjacent[i];
                 if (!this.isRemovedEdge(edge)) {
                     let length = this.getEdgeLength(edge);
                     this.removeEdge(edge);
                     let nextPath:IEdge<E>[] = [];
-                    let result = this.pathBetweenUtil(edge, endId, distance + length, longest, nextPath);
+                    let result = this.pathBetweenUtil(edge, endId, distance + length, longest, nextPath, unusedEdges);
                     if (result !== Infinity) {
                         if (longest && selectedDistance < result) {
+                            if (selectedEdge) {
+                                unusedEdges.push(selectedEdge);
+                            }
                             selectedPath = nextPath;
                             selectedDistance = result;
+                            selectedEdge = edge;
                         }
                         else if (!longest && selectedDistance > result) {
+                            if (selectedEdge) {
+                                unusedEdges.push(selectedEdge);
+                            }
                             selectedPath = nextPath;
                             selectedDistance = result;
-                        }
+                            selectedEdge = edge;
+                       }
+                       else {
+                           unusedEdges.push(edge);
+                       }
+                        
                     }
+                    this.unremoveEdge(edge);
                 }
             }
             if (selectedPath) {
@@ -309,14 +323,44 @@ export class Graph<V, E> {
         }
         return Infinity;
     }
-    public pathBetween(startId: number, endId: number, longest: boolean, edgeType: new () => E, each: (vertex: IEdge<E>) =>void = null ): number {
+    public pathBetween(startId: number, endId: number, longest: boolean, edgeType: new () => E, each: (vertex: IEdge<E>) =>void = null, unusedEdges: IEdge<E>[] = [], unusedVertices:IVertex<V>[] = null ): number {
         var path: IEdge<E>[] = [];
-        let distance = this.pathBetweenUtil(new Edge<E>(-1, startId, new edgeType()), endId, 0, longest, path);
+        unusedEdges.splice(0, unusedEdges.length);
+        let distance = this.pathBetweenUtil(new Edge<E>(-1, startId, new edgeType()), endId, 0, longest, path, unusedEdges);
         if (each) {
             path.forEach(each);
         }
-        this.unremoveAllEdges();
+        if (unusedVertices) {
+           var visited: boolean[] = [];
+           visited[startId] = true;
+           for (let i = 0; i < path.length; i++) {
+                visited[path[i].toId] = true;
+            }
+            for (let id = 0; id < this._vertices.length; id++) {
+                if (!visited[id]) {
+                    unusedVertices.push(this.getVertex(id));
+                }
+            }
+        }
         return distance;
+    }
+    //mark all other edges in the vertex containing unused edges as removed
+    public markUnused(unused: IEdge<E>[]) : void {
+        if (unused) {
+            let cleared: boolean[] = [];
+            unused.forEach((unusedEdge) => {
+                let vertex = this.getVertex(unusedEdge.fromId);
+                if (!cleared[vertex.id]) {
+                    if (vertex.adjacent) {
+                        vertex.adjacent.forEach((edge) => {
+                            this.removeEdge(edge);
+                        });
+                    }
+                    cleared[vertex.id] = true;
+                }
+                this.unremoveEdge(unusedEdge);
+            });
+        }
     }
     public merge(graph: { vertices: IVertex < V > [], edges: IEdge < E > [] }, keyGenerator: VertexKeyGenerator<V>) {
 

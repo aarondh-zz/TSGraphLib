@@ -3,43 +3,14 @@
 <html lang="en">
 <head>
     <meta charset="utf-8" />
-    <title>TSGrahLib test harness</title>
+    <title>Detective Test</title>
     <link rel="stylesheet" href="app.css" type="text/css" />
     <script src="https://unpkg.com/core-js/client/shim.min.js"></script>
     <script src="https://unpkg.com/zone.js@0.7.4?main=browser"></script>
     <script src="https://unpkg.com/systemjs@0.19.39/dist/system.src.js"></script>
     <script src="/systemjs.config.js"></script>
-    <script id="graphInput" type="application/json">
-        {
-        "vertices":[
-            { "label":"Bedrock","mass":20},
-            { "label":"Flintstone","mass":5},
-            { "label":"Rubble","mass":5},
-            { "label":"Mr. Slate"},
-            { "label":"Fred"},
-            { "label":"Barney"},
-            { "label":"Wilma"},
-            { "label":"Bambam"},
-            { "label":"Deno"},
-            { "label":"Betty"}
-            ],
-        "edges": [
-            {"from":0, "to":1},
-            {"from":0, "to":2},
-            {"from":0, "to":3},
-            {"from":2, "to":5},
-        {"from":2, "to":7},
-        {"from":2, "to":9},
-        {"from":1, "to":4},
-        {"from":1, "to":6},
-        {"from":1, "to":8},
-        {"from":3, "to":4},
-        {"from":3, "to":5}
-           ]
-        }
-    </script>
     <script>
-        System.import('app/boot').catch(function (err) { console.error(err); });
+        System.import('app/detectiveTestboot').catch(function (err) { console.error(err); });
     </script>
     <style type="text/css">
         .test-container {
@@ -75,7 +46,7 @@
     </style>
 </head>
 <body>
-    <h1>TSGraphLib test harness</h1>
+    <h1>Detective Test</h1>
     <div id="content"></div>
 </body>
 </html>

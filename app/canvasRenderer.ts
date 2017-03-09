@@ -60,6 +60,7 @@ export class CanvasRenderer<V, E> implements Renderer<V, E> {
     targetBoundingBox: Rectangle;
     public defaultVertexStyle: VertexStyle = defaultVertexStyle;
     public defaultEdgeStyle: EdgeStyle = defaultEdgeStyle;
+    public padding: Padding = { left: 20, right: 20, top: 20, bottom: 20 };
     private _stopping: boolean = false;
     private _vertexSizes: Size[] = [];
     constructor(public layout: Layout<V, E>, public canvasElement: HTMLCanvasElement) {
@@ -91,16 +92,26 @@ export class CanvasRenderer<V, E> implements Renderer<V, E> {
             window.requestAnimationFrame(this.adjustBoundingBox.bind(this));
         }
     }
+    getCanvasClientSize(): Size {
+        return { width: this.canvasElement.width - this.padding.left - this.padding.right, height: this.canvasElement.height - this.padding.top - this.padding.bottom };
+    }
+    getCanvasClientOffset(): Point {
+        return { x: this.padding.left, y: this.padding.top};
+    }
     toScreen(p: Vector) {
         var size = this.boundingBox.topRight.subtract(this.boundingBox.bottomLeft);
-        var sx = p.subtract(this.boundingBox.bottomLeft).divide(size.x).x * this.canvasElement.width;
-        var sy = p.subtract(this.boundingBox.bottomLeft).divide(size.y).y * this.canvasElement.height;
+        var drawingSize = this.getCanvasClientSize();
+        var drawingOffset = this.getCanvasClientOffset();
+        var sx = p.subtract(this.boundingBox.bottomLeft).divide(size.x).x * drawingSize.width + drawingOffset.x;
+        var sy = p.subtract(this.boundingBox.bottomLeft).divide(size.y).y * drawingSize.height + drawingOffset.y;
         return new Vector(sx, sy);
     }
     fromScreen(s: Vector) {
         var size = this.boundingBox.topRight.subtract(this.boundingBox.bottomLeft);
-        var px = (s.x / this.canvasElement.width) * size.x + this.boundingBox.bottomLeft.x;
-        var py = (s.y / this.canvasElement.height) * size.y + this.boundingBox.bottomLeft.y;
+        var drawingSize = this.getCanvasClientSize();
+        var drawingOffset = this.getCanvasClientOffset();
+        var px = ((s.x - drawingOffset.x) / drawingSize.width) * size.x + this.boundingBox.bottomLeft.x;
+        var py = ((s.y - drawingOffset.y) / drawingSize.height) * size.y + this.boundingBox.bottomLeft.y;
         return new Vector(px, py);
     }
     clear(): void {

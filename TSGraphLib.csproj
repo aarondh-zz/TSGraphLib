@@ -23,14 +23,18 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="app.css" />
+    <Content Include="app\detective.html" />
+    <Content Include="app\forceDirected.html" />
     <Content Include="index.html" />
     <Content Include="systemjs.config.js" />
     <Content Include="web.config" />
   </ItemGroup>
   <ItemGroup>
     <TypeScriptCompile Include="app\animate.ts" />
-    <TypeScriptCompile Include="app\boot.ts" />
-    <TypeScriptCompile Include="app\app.ts" />
+    <TypeScriptCompile Include="app\detectiveTestBoot.ts" />
+    <TypeScriptCompile Include="app\forceDirectedTestBoot.ts" />
+    <TypeScriptCompile Include="app\testHarness.ts" />
+    <TypeScriptCompile Include="app\forceDirectedTest.ts" />
     <TypeScriptCompile Include="app\canvasRenderer.ts" />
     <TypeScriptCompile Include="app\forceDirected.ts" />
     <TypeScriptCompile Include="app\graph.ts" />
