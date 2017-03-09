@@ -1,8 +1,8 @@
-﻿import { Graph, IVertex, IEdge } from "./graph";
-import { Animate, Layout, Renderer } from "./animate";
-import { CanvasRenderer, VertexStyle, EdgeStyle } from "./canvasRenderer";
-import { ForceDirected } from "./forceDirected";
-import { TestHarness } from "./testHarness";
+﻿import { Graph, IVertex, IEdge } from "../lib/graph";
+import { Animate, Layout, Renderer } from "../lib/animate";
+import { CanvasRenderer, VertexStyle, EdgeStyle } from "../lib/canvasRenderer";
+import { ForceDirected } from "../lib/forceDirected";
+import { TestHarness } from "../test/testHarness";
 const NodeTextStyle = "black";
 const VisitedTextStyle = "blue";
 const RootTextStyle = "green";

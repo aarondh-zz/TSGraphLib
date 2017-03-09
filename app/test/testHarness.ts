@@ -1,9 +1,8 @@
-﻿import { Graph, IVertex, IEdge } from "./graph";
-import { Vector, Rectangle } from "./math";
-import { ForceDirected } from "./forceDirected";
-import { Animate, Renderer, Layout } from "./animate";
-import { CanvasRenderer } from "./canvasRenderer";
-import { Detective } from "./detective";
+﻿import { Graph, IVertex, IEdge } from "../lib/graph";
+import { Vector, Rectangle } from "../lib/math";
+import { ForceDirected } from "../lib/forceDirected";
+import { Animate, Renderer, Layout } from "../lib/animate";
+import { CanvasRenderer } from "../lib/canvasRenderer";
 export class TestHarness {
     private _textDiv: HTMLDivElement;
     private _canvasElement: HTMLCanvasElement;

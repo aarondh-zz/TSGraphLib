@@ -1,9 +1,9 @@
-﻿import { Graph, IVertex, IEdge } from "./graph";
-import { Vector, Rectangle } from "./math";
-import { ForceDirected } from "./forceDirected";
-import { Animate, Renderer, Layout } from "./animate";
-import { CanvasRenderer } from "./canvasRenderer";
-import { TestHarness } from "./testHarness";
+﻿import { Graph, IVertex, IEdge } from "../lib/graph";
+import { Vector, Rectangle } from "../lib/math";
+import { ForceDirected } from "../lib/forceDirected";
+import { Animate, Renderer, Layout } from "../lib/animate";
+import { CanvasRenderer } from "../lib/canvasRenderer";
+import { TestHarness } from "../test/testHarness";
 
 interface VertexData {
     label: string;

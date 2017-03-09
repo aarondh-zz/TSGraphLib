@@ -30,18 +30,23 @@
     <Content Include="web.config" />
   </ItemGroup>
   <ItemGroup>
-    <TypeScriptCompile Include="app\animate.ts" />
-    <TypeScriptCompile Include="app\detectiveTestBoot.ts" />
-    <TypeScriptCompile Include="app\forceDirectedTestBoot.ts" />
-    <TypeScriptCompile Include="app\testHarness.ts" />
-    <TypeScriptCompile Include="app\forceDirectedTest.ts" />
-    <TypeScriptCompile Include="app\canvasRenderer.ts" />
-    <TypeScriptCompile Include="app\forceDirected.ts" />
-    <TypeScriptCompile Include="app\graph.ts" />
-    <TypeScriptCompile Include="app\math.ts" />
-    <TypeScriptCompile Include="app\detective.ts" />
+    <TypeScriptCompile Include="app\lib\animate.ts" />
+    <TypeScriptCompile Include="app\detective\detectiveTestBoot.ts" />
+    <TypeScriptCompile Include="app\test\forceDirectedTestBoot.ts" />
+    <TypeScriptCompile Include="app\test\testHarness.ts" />
+    <TypeScriptCompile Include="app\test\forceDirectedTest.ts" />
+    <TypeScriptCompile Include="app\lib\canvasRenderer.ts" />
+    <TypeScriptCompile Include="app\lib\forceDirected.ts" />
+    <TypeScriptCompile Include="app\lib\graph.ts" />
+    <TypeScriptCompile Include="app\lib\math.ts" />
+    <TypeScriptCompile Include="app\detective\detective.ts" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="app\detective\docs\Detective.doc" />
+    <Content Include="app\detective\docs\example1.json" />
+    <Content Include="app\detective\docs\example2.json" />
+    <Content Include="app\detective\docs\example3.json" />
+    <Content Include="app\detective\docs\example4.json" />
     <None Include="web.Debug.config">
       <DependentUpon>web.config</DependentUpon>
     </None>
