@@ -23,8 +23,8 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="app.css" />
-    <Content Include="app\detective.html" />
-    <Content Include="app\forceDirected.html" />
+    <Content Include="app\detective\detective.html" />
+    <Content Include="app\test\forceDirected.html" />
     <Content Include="index.html" />
     <Content Include="systemjs.config.js" />
     <Content Include="web.config" />

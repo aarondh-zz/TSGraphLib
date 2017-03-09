@@ -12,21 +12,29 @@ function boot(): void {
     );
 
     detective = new Detective(contentDiv);
-    detective.test("gunfight 2", [
+    detective.test("arson", [
+        ["pouring gas", "laughing", "lighting match", "fire"],
+        ["buying gas", "pouring gas", "crying", "fire", "smoke"],
+    ]
+
+    );
+
+    detective = new Detective(contentDiv);
+    detective.test("gunfight 2 (example 1)", [
         ["fight", "gunshot", "fleeing"],
         ["gunshot", "falling", "fleeing"]
     ]
     );
 
     detective = new Detective(contentDiv);
-    detective.test("mugging", [
+    detective.test("mugging (example 2)", [
         ["shadowy figure", "demands", "scream", "siren"],
         ["shadowy figure", "pointed gun", "scream"]
     ]
     );
 
     detective = new Detective(contentDiv);
-    detective.test("scandle", [
+    detective.test("scandle (example 3)", [
         ["argument", "stuff", "pointing"],
         ["press brief", "scandal", "pointing"],
         ["bribe", "coverup"]
@@ -34,15 +42,7 @@ function boot(): void {
     );
 
     detective = new Detective(contentDiv);
-    detective.test("arson", [
-        ["pouring gas", "laughing", "lighting match", "fire"] ,
-        ["buying gas", "pouring gas", "crying", "fire", "smoke"] ,
-    ]
-
-    );
-
-    detective = new Detective(contentDiv);
-    detective.test("numbers", [
+    detective.test("numbers (example 4)", [
         ["0"],
         ["1"],
         ["2"],

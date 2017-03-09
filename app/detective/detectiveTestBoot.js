@@ -9,28 +9,28 @@ function boot() {
         ["anger", "shouting"]
     ]);
     detective = new detective_1.Detective(contentDiv);
-    detective.test("gunfight 2", [
-        ["fight", "gunshot", "fleeing"],
-        ["gunshot", "falling", "fleeing"]
-    ]);
-    detective = new detective_1.Detective(contentDiv);
-    detective.test("mugging", [
-        ["shadowy figure", "demands", "scream", "siren"],
-        ["shadowy figure", "pointed gun", "scream"]
-    ]);
-    detective = new detective_1.Detective(contentDiv);
-    detective.test("scandle", [
-        ["argument", "stuff", "pointing"],
-        ["press brief", "scandal", "pointing"],
-        ["bribe", "coverup"]
-    ]);
-    detective = new detective_1.Detective(contentDiv);
     detective.test("arson", [
         ["pouring gas", "laughing", "lighting match", "fire"],
         ["buying gas", "pouring gas", "crying", "fire", "smoke"],
     ]);
     detective = new detective_1.Detective(contentDiv);
-    detective.test("numbers", [
+    detective.test("gunfight 2 (example 1)", [
+        ["fight", "gunshot", "fleeing"],
+        ["gunshot", "falling", "fleeing"]
+    ]);
+    detective = new detective_1.Detective(contentDiv);
+    detective.test("mugging (example 2)", [
+        ["shadowy figure", "demands", "scream", "siren"],
+        ["shadowy figure", "pointed gun", "scream"]
+    ]);
+    detective = new detective_1.Detective(contentDiv);
+    detective.test("scandle (example 3)", [
+        ["argument", "stuff", "pointing"],
+        ["press brief", "scandal", "pointing"],
+        ["bribe", "coverup"]
+    ]);
+    detective = new detective_1.Detective(contentDiv);
+    detective.test("numbers (example 4)", [
         ["0"],
         ["1"],
         ["2"],
