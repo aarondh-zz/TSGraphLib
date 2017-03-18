@@ -45,6 +45,21 @@ export class Vector implements Point {
     public normalise() {
         return this.divide(this.magnitude());
     }
+
+    public interpolate(p2: Vector, travel: number, offset: number = 0.0): Vector {
+
+        var direction = p2.subtract(this);
+        if (offset) {
+            var normal = direction.normal().normalise();
+
+            return this.add(p2).multiply(travel).add(normal.multiply(offset));
+        }
+        else {
+            return this.add(p2).multiply(travel);
+        }
+
+    }
+
 }
 
 export function intersectLineLine(p1: Vector, p2: Vector, p3: Vector, p4: Vector): Vector {

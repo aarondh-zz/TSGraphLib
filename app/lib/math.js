@@ -28,6 +28,17 @@ var Vector = (function () {
     Vector.prototype.normalise = function () {
         return this.divide(this.magnitude());
     };
+    Vector.prototype.interpolate = function (p2, travel, offset) {
+        if (offset === void 0) { offset = 0.0; }
+        var direction = p2.subtract(this);
+        if (offset) {
+            var normal = direction.normal().normalise();
+            return this.add(p2).multiply(travel).add(normal.multiply(offset));
+        }
+        else {
+            return this.add(p2).multiply(travel);
+        }
+    };
     return Vector;
 }());
 exports.Vector = Vector;

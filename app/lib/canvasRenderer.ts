@@ -28,6 +28,11 @@ export interface EdgeStyle {
     arrowSize?: Size;
     arrowPadding?: Point;
 }
+export enum EdgeType {
+    Line,
+    BezierCurve,
+    QuadradicCurve
+}
 var defaultVertexStyle: VertexStyle = {
     font: "12px Verdana, sans-serif",
     backgroundStyle: "#FFFFE0",
@@ -52,6 +57,7 @@ export class CanvasRenderer<V, E> implements Renderer<V, E> {
     public defaultVertexStyle: VertexStyle = defaultVertexStyle;
     public defaultEdgeStyle: EdgeStyle = defaultEdgeStyle;
     public padding: Padding = { left: 20, right: 20, top: 20, bottom: 20 };
+    public edgeType: EdgeType = EdgeType.Line;
     private _stopping: boolean = false;
     private _vertexSizes: Size[] = [];
     constructor(public layout: Layout<V, E>, public canvasElement: HTMLCanvasElement) {
@@ -224,12 +230,26 @@ export class CanvasRenderer<V, E> implements Renderer<V, E> {
         dc.strokeStyle = edgeStyle.lineStyle;
         dc.beginPath();
         dc.moveTo(p1.x, p1.y);
+        switch (this.edgeType) {
+            case EdgeType.Line:
+                dc.lineTo(p2.x, p2.y);
+                break;
+            case EdgeType.BezierCurve:
+                let cp1 = p1.interpolate(p2, 0.25, 8);
+                let cp2 = p1.interpolate(p2, 0.75, -8);
+                dc.bezierCurveTo(cp1.x, cp1.y, cp2.x, cp2.y, p2.x, p2.y);
+                break;
+            case EdgeType.QuadradicCurve:
+                let p3 = new Vector(p2.x - p1.x, p2.y - p1.y);
+                dc.quadraticCurveTo(p3.x, p3.y, p2.x, p2.y);
+                break;
+        }
         dc.lineTo(p2.x, p2.y);
         dc.stroke();
 
         dc.restore();
 
-        if ( isDirectional ) {
+        if (isDirectional) {
 
             dc.save();
 
@@ -282,7 +302,7 @@ export class CanvasRenderer<V, E> implements Renderer<V, E> {
 
             }
 
-            var textPos = p1.add(p2).divide(2).add(normal.multiply(displacement));
+            var textPos = p1.interpolate(p2, 0.5, displacement);
 
             dc.translate(textPos.x, textPos.y);
 

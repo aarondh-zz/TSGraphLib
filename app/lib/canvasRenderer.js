@@ -1,6 +1,12 @@
 "use strict";
 var math_1 = require("./math");
 var utils_1 = require("./utils");
+(function (EdgeType) {
+    EdgeType[EdgeType["Line"] = 0] = "Line";
+    EdgeType[EdgeType["BezierCurve"] = 1] = "BezierCurve";
+    EdgeType[EdgeType["QuadradicCurve"] = 2] = "QuadradicCurve";
+})(exports.EdgeType || (exports.EdgeType = {}));
+var EdgeType = exports.EdgeType;
 var defaultVertexStyle = {
     font: "12px Verdana, sans-serif",
     backgroundStyle: "#FFFFE0",
@@ -24,6 +30,7 @@ var CanvasRenderer = (function () {
         this.defaultVertexStyle = defaultVertexStyle;
         this.defaultEdgeStyle = defaultEdgeStyle;
         this.padding = { left: 20, right: 20, top: 20, bottom: 20 };
+        this.edgeType = EdgeType.Line;
         this._stopping = false;
         this._vertexSizes = [];
         this.drawingContext = canvasElement.getContext("2d");
@@ -163,6 +170,20 @@ var CanvasRenderer = (function () {
         dc.strokeStyle = edgeStyle.lineStyle;
         dc.beginPath();
         dc.moveTo(p1.x, p1.y);
+        switch (this.edgeType) {
+            case EdgeType.Line:
+                dc.lineTo(p2.x, p2.y);
+                break;
+            case EdgeType.BezierCurve:
+                var cp1 = p1.interpolate(p2, 0.25, 8);
+                var cp2 = p1.interpolate(p2, 0.75, -8);
+                dc.bezierCurveTo(cp1.x, cp1.y, cp2.x, cp2.y, p2.x, p2.y);
+                break;
+            case EdgeType.QuadradicCurve:
+                var p3 = new math_1.Vector(p2.x - p1.x, p2.y - p1.y);
+                dc.quadraticCurveTo(p3.x, p3.y, p2.x, p2.y);
+                break;
+        }
         dc.lineTo(p2.x, p2.y);
         dc.stroke();
         dc.restore();
@@ -193,7 +214,7 @@ var CanvasRenderer = (function () {
                 displacement = 8;
                 angle += Math.PI;
             }
-            var textPos = p1.add(p2).divide(2).add(normal.multiply(displacement));
+            var textPos = p1.interpolate(p2, 0.5, displacement);
             dc.translate(textPos.x, textPos.y);
             dc.rotate(angle);
             dc.fillText(label, 0, -2);
